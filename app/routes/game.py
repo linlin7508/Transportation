@@ -757,6 +757,36 @@ def bus_data(file_key):
     return jsonify(_load_bus_data(file_key))
 
 
+@game_bp.get("/api/bus/live/<route_key>")
+def live_bus_positions(route_key):
+    from app.services.tdx_service import fetch_live_bus_positions
+
+    route_aliases = {
+        "br3": "brown-3",
+        "brown_3": "brown-3",
+        "brown-3": "brown-3",
+        "cat_right": "cat-right",
+        "cat-right": "cat-right",
+        "cat_left": "cat-left",
+        "cat-left": "cat-left",
+        "cat_left_zhinan": "cat-left-zhinan",
+        "cat-left-zhinan": "cat-left-zhinan",
+    }
+    normalized_route = route_aliases.get(route_key)
+    if not normalized_route:
+        return jsonify({"success": False, "message": "unsupported bus route", "buses": []}), 404
+
+    buses, error = fetch_live_bus_positions(normalized_route)
+    return jsonify({
+        "success": error is None,
+        "source": "tdx-live" if error is None else "tdx-live-error",
+        "route": normalized_route,
+        "count": len(buses),
+        "buses": buses,
+        "message": error,
+    })
+
+
 @game_bp.get("/api/arena/cached-levels")
 def cached_arena_levels():
     arenas = {

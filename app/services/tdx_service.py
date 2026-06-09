@@ -6,6 +6,7 @@ import time
 import random
 import logging
 import pathlib
+from urllib.parse import quote
 
 # 設置日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -35,6 +36,21 @@ LOCAL_DATA_FILES = {
     'cat-left-stops': os.path.join(STOPS_DATA_DIR, 'cat_left_stops.json'),
     'cat-left-zhinan-stops': os.path.join(STOPS_DATA_DIR, 'cat_left_zhinan_stops.json'),
     'brown-3-stops': os.path.join(STOPS_DATA_DIR, 'brown_3_stops.json'),
+}
+
+LIVE_BUS_ROUTE_NAMES = {
+    'br3': '棕3',
+    'brown-3': '棕3',
+    'brown-3-route': '棕3',
+    'cat_right': '貓空右線',
+    'cat-right': '貓空右線',
+    'cat-right-route': '貓空右線',
+    'cat_left': '貓空左線(動物園)',
+    'cat-left': '貓空左線(動物園)',
+    'cat-left-route': '貓空左線(動物園)',
+    'cat_left_zhinan': '貓空左線(指南宮)',
+    'cat-left-zhinan': '貓空左線(指南宮)',
+    'cat-left-zhinan-route': '貓空左線(指南宮)',
 }
 
 # 緩存配置
@@ -140,6 +156,87 @@ def make_tdx_request(url, token):
     
     # 所有重試都失敗
     return []
+
+
+def _normalize_live_bus_position(bus):
+    """Normalize TDX realtime bus payload to the frontend's compact format."""
+    position = bus.get("BusPosition") or {}
+    lat = position.get("PositionLat") or bus.get("PositionLat")
+    lon = position.get("PositionLon") or bus.get("PositionLon")
+    plate = bus.get("PlateNumb") or bus.get("PlateNumber")
+
+    if lat is None or lon is None or not plate:
+        return None
+
+    return {
+        "PlateNumb": plate,
+        "PositionLat": lat,
+        "PositionLon": lon,
+        "RouteName": (bus.get("RouteName") or {}).get("Zh_tw") if isinstance(bus.get("RouteName"), dict) else bus.get("RouteName"),
+        "Direction": bus.get("Direction"),
+        "Speed": bus.get("Speed"),
+        "SrcUpdateTime": bus.get("SrcUpdateTime"),
+        "UpdateTime": bus.get("UpdateTime"),
+    }
+
+
+def fetch_live_bus_positions(route_key):
+    """
+    Fetch realtime bus positions from TDX for one supported route.
+
+    Returns:
+        tuple[list[dict], str | None]: normalized buses and an optional error message.
+    """
+    route_name = LIVE_BUS_ROUTE_NAMES.get(route_key)
+    if not route_name:
+        return [], f"unsupported route: {route_key}"
+
+    token = get_tdx_token()
+    if not token:
+        return [], "TDX token unavailable"
+
+    encoded_route_name = quote(route_name, safe="")
+    url = (
+        f"{TDX_API_URL}/v2/Bus/RealTimeByFrequency/City/Taipei/"
+        f"{encoded_route_name}?$format=JSON"
+    )
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    last_error = None
+    data = []
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 429:
+                last_error = "TDX API rate limit exceeded"
+                time.sleep(RATE_LIMIT_DELAY * (2 ** attempt))
+                continue
+
+            response.raise_for_status()
+            data = response.json()
+            last_error = None
+            break
+        except requests.exceptions.RequestException as error:
+            last_error = str(error)
+            logger.error(f"TDX realtime bus request failed ({attempt + 1}/{MAX_RETRIES}): {error}")
+            time.sleep(BASE_DELAY * (2 ** attempt))
+
+    if last_error:
+        return [], last_error
+    if not isinstance(data, list):
+        return [], "TDX realtime payload is not a list"
+
+    buses = []
+    for bus in data:
+        if not isinstance(bus, dict):
+            continue
+        normalized = _normalize_live_bus_position(bus)
+        if normalized:
+            buses.append(normalized)
+
+    return buses, None
 
 def save_data_to_file(data, file_path):
     """

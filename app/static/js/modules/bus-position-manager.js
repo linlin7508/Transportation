@@ -4,6 +4,8 @@
 let busPositionLayer = L.layerGroup();
 let currentBuses = [];
 let busMarkers = {};
+let busPositionRefreshTimer = null;
+const BUS_POSITION_REFRESH_INTERVAL_MS = 30000;
 
 // 公車圖標配置
 const busIcon = L.icon({
@@ -25,10 +27,10 @@ const busIcon = L.icon({
 
 // 路線對應的公車數據文件
 const busDataFiles = {
-    'br3': '/static/data/bus/br3_bus.json',
-    'cat_left': '/static/data/bus/cat_left_bus.json',
-    'cat_left_zhinan': '/static/data/bus/cat_left_zhinan_bus.json',
-    'cat_right': '/static/data/bus/cat_right_bus.json'
+    'br3': '/game/api/bus/live/brown-3',
+    'cat_left': '/game/api/bus/live/cat-left',
+    'cat_left_zhinan': '/game/api/bus/live/cat-left-zhinan',
+    'cat_right': '/game/api/bus/live/cat-right'
 };
 
 // 路線顏色對應
@@ -63,6 +65,7 @@ function initBusPositionLayer(map) {
     
     // 將圖層暴露給全局
     window.busPositionLayer = busPositionLayer;
+    startBusPositionAutoRefresh();
     
     console.log('公車位置圖層初始化完成');
 }
@@ -166,18 +169,22 @@ async function loadRouteBusPositions(route, dataFile) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data = await response.json();
+        const payload = await response.json();
+        const data = Array.isArray(payload) ? payload : (payload.buses || []);
+        const source = Array.isArray(payload) ? 'legacy-array' : payload.source;
         
         if (!Array.isArray(data)) {
             console.warn(`${route} 路線數據格式錯誤，預期為陣列`);
             return [];
         }        // 處理空陣列的情況（路線尚未發車或已收班）
         if (data.length === 0) {
-            // 靜默處理空集合，不產生日誌訊息
+            if (payload && payload.success === false && payload.message) {
+                console.warn(`${route} 即時公車資料取得失敗: ${payload.message}`);
+            }
             return [];
         }
 
-        console.log(`${route} 路線載入 ${data.length} 輛公車`);
+        console.log(`${route} 路線載入 ${data.length} 輛公車，來源: ${source || 'unknown'}`);
         
         // 在地圖上顯示公車
         data.forEach(bus => {
@@ -293,6 +300,21 @@ async function updateBusPositions() {
     await loadAllBusPositions();
 }
 
+function startBusPositionAutoRefresh() {
+    if (busPositionRefreshTimer) {
+        return;
+    }
+
+    busPositionRefreshTimer = setInterval(() => {
+        if (document.hidden) {
+            return;
+        }
+        updateBusPositions().catch(error => {
+            console.warn('公車即時位置自動更新失敗:', error);
+        });
+    }, BUS_POSITION_REFRESH_INTERVAL_MS);
+}
+
 /**
  * 切換公車圖層顯示/隱藏
  * @param {boolean} show - 是否顯示
@@ -322,12 +344,14 @@ window.loadAllBusPositions = loadAllBusPositions;
 window.updateBusPositions = updateBusPositions;
 window.clearBusMarkers = clearBusMarkers;
 window.toggleBusLayer = toggleBusLayer;
+window.startBusPositionAutoRefresh = startBusPositionAutoRefresh;
 
 // 導出模組
 export {
     initBusPositionLayer,
     loadAllBusPositions,
     updateBusPositions,
+    startBusPositionAutoRefresh,
     clearBusMarkers,
     toggleBusLayer,
     busPositionLayer
