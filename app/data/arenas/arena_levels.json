@@ -375,10 +375,9 @@
     "stopName": "政大",
     "routes": [
       "棕3",
-      "貓空左線(動物園)",
-      "棕3路線"
+      "貓空左線(動物園)"
     ],
-    "level": 3,
+    "level": 2,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,
@@ -887,10 +886,9 @@
     ],
     "stopName": "萬寧山莊",
     "routes": [
-      "棕3",
-      "棕3路線"
+      "棕3"
     ],
-    "level": 2,
+    "level": 1,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,
@@ -1038,10 +1036,9 @@
     ],
     "stopName": "萬芳活動中心",
     "routes": [
-      "棕3",
-      "棕3路線"
+      "棕3"
     ],
-    "level": 2,
+    "level": 1,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,
