@@ -29,6 +29,11 @@ def create_app(config_name='default', load_tdx=True):
     db.init_app(app)
     import app.models as app_models
     migrate.init_app(app, db)
+
+    # Render 上的新 PostgreSQL 不會自動有資料表；目前專案沒有 migrations/
+    # 先用 create_all 做 MVP 上線救火，之後再補 Flask-Migrate migration。
+    with app.app_context():
+        db.create_all()
     
     # Session Authentication Middleware (Phase 7)
     from app.models.user import User
