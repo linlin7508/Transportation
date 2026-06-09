@@ -5,6 +5,7 @@ import os
 import config as config_module
 import logging
 import threading
+from sqlalchemy import inspect
 # 從 extensions 導入
 from app.extensions import db, migrate
 
@@ -33,7 +34,14 @@ def create_app(config_name='default', load_tdx=True):
     # Render 上的新 PostgreSQL 不會自動有資料表；目前專案沒有 migrations/
     # 先用 create_all 做 MVP 上線救火，之後再補 Flask-Migrate migration。
     with app.app_context():
-        db.create_all()
+        try:
+            print("START CREATE TABLES")
+            db.create_all()
+            inspector = inspect(db.engine)
+            print("CREATE TABLES DONE")
+            print("TABLES =", inspector.get_table_names())
+        except Exception as e:
+            print("CREATE TABLES ERROR:", e)
     
     # Session Authentication Middleware (Phase 7)
     from app.models.user import User
