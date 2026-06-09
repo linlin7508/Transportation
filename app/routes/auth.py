@@ -60,16 +60,17 @@ def register_route():
     except IntegrityError:
         db.session.rollback()
         return _auth_error("duplicate or integrity error", 409, "auth/register.html")
-    except Exception:
+    except Exception as e:
         db.session.rollback()
-        return _auth_error("internal error", 500, "auth/register.html")
+        print("REGISTER ERROR:", repr(e))
+        raise
 
     session["user_id"] = str(user.id)
     session["user"] = {"uid": str(user.id), "username": user.username, "email": user.email}
 
     if _wants_json():
         return jsonify({"user_id": str(user.id)})
-    return redirect(url_for("main.profile"))
+    return redirect("/")
 
 
 @auth_bp.route("/login", methods=["GET", "POST"], endpoint="login")
@@ -94,7 +95,7 @@ def login_route():
 
     if _wants_json():
         return jsonify({"message": "login success"})
-    return redirect(url_for("main.profile"))
+    return redirect("/")
 
 
 @auth_bp.route("/logout", methods=["GET", "POST"], endpoint="logout")
