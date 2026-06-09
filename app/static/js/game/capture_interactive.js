@@ -34,6 +34,8 @@ class CaptureInteractive {  constructor() {
     
     this.selectedCircleType = 'premium';
     this.captureInProgress = false;
+    this.lastCaptureSucceeded = false;
+    this.countdownInterval = null;
     this.playerAddition = 1.0; // 玩家精靈加成，默認無加成
     this.creatureRarity = 'N'; // 當前精靈稀有度，默認為N
       this.initializeElements();
@@ -73,6 +75,11 @@ class CaptureInteractive {  constructor() {
       captureBtn: document.getElementById('captureBtn'),
       cancelBtn: document.getElementById('cancelBtn'),
       resultMessage: document.getElementById('resultMessage'),
+      retryCaptureBtn: document.getElementById('retryCaptureBtn'),
+      countdownNotice: document.getElementById('countdownNotice'),
+      returnMapBtn: document.getElementById('returnMapBtn'),
+      viewProfileBtn: document.getElementById('viewProfileBtn'),
+      captureResultModal: document.getElementById('captureResultModal'),
       circleTypeItems: document.querySelectorAll('.circle-type-item')
     };
   }
@@ -84,6 +91,22 @@ class CaptureInteractive {  constructor() {
     
     // 取消按鈕點擊事件
     this.elements.cancelBtn.addEventListener('click', () => window.history.back());
+
+    if (this.elements.retryCaptureBtn) {
+      this.elements.retryCaptureBtn.addEventListener('click', () => {
+        const modal = bootstrap.Modal.getInstance(this.elements.captureResultModal);
+        if (modal) modal.hide();
+        this.resetCaptureInterface();
+      });
+    }
+
+    if (this.elements.captureResultModal) {
+      this.elements.captureResultModal.addEventListener('hidden.bs.modal', () => {
+        if (!this.lastCaptureSucceeded) {
+          this.resetCaptureInterface();
+        }
+      });
+    }
     
     // 魔法陣選擇事件
     this.elements.circleTypeItems.forEach(item => {
@@ -564,6 +587,11 @@ class CaptureInteractive {  constructor() {
     // 顯示捕捉結果模態框
   showCaptureResultModal(isSuccess = true) {
     const modal = new bootstrap.Modal(document.getElementById('captureResultModal'));
+    this.lastCaptureSucceeded = isSuccess;
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
     
     if (!isSuccess) {
       // 設置失敗模態框樣式
@@ -571,6 +599,12 @@ class CaptureInteractive {  constructor() {
       document.getElementById('resultModalTitle').textContent = '捕捉失敗';
       document.getElementById('resultText').textContent = '捕捉失敗！';
       document.getElementById('resultDescription').textContent = '很遺憾，這次沒有成功捕捉到精靈，請再試一次！';
+      if (this.elements.countdownNotice) {
+        this.elements.countdownNotice.innerHTML = '<small class="text-muted">這隻精靈還在這裡，可以直接再試一次。</small>';
+      }
+      if (this.elements.retryCaptureBtn) this.elements.retryCaptureBtn.style.display = '';
+      if (this.elements.viewProfileBtn) this.elements.viewProfileBtn.style.display = 'none';
+      if (this.elements.returnMapBtn) this.elements.returnMapBtn.textContent = '返回地圖';
       
       // 隱藏經驗值信息
       const experienceInfo = document.querySelector('.experience-gain-info');
@@ -580,6 +614,12 @@ class CaptureInteractive {  constructor() {
       // 設置成功模態框樣式
       document.getElementById('resultModalHeader').className = 'modal-header bg-success text-white';
       document.getElementById('resultModalTitle').textContent = '捕捉成功';
+      if (this.elements.countdownNotice) {
+        this.elements.countdownNotice.innerHTML = '<small class="text-muted">將在 <span id="countdown">5</span> 秒後自動返回地圖</small>';
+      }
+      if (this.elements.retryCaptureBtn) this.elements.retryCaptureBtn.style.display = 'none';
+      if (this.elements.viewProfileBtn) this.elements.viewProfileBtn.style.display = '';
+      if (this.elements.returnMapBtn) this.elements.returnMapBtn.textContent = '返回地圖';
         
       // 總是顯示經驗值信息（捕捉成功時）
       const experienceInfo = document.querySelector('.experience-gain-info');
@@ -640,19 +680,25 @@ class CaptureInteractive {  constructor() {
       }, 100);
     }
     
-    // 5秒後自動跳轉並顯示倒數計時
-    this.startCountdown();
+    if (isSuccess) {
+      // 5秒後自動跳轉並顯示倒數計時
+      this.startCountdown();
+    }
   }
     // 開始倒數計時
   startCountdown() {
     let countdown = 5;
     const countdownElement = document.getElementById('countdown');
-    const countdownInterval = setInterval(() => {
+    if (countdownElement) {
+      countdownElement.textContent = countdown;
+    }
+    this.countdownInterval = setInterval(() => {
       countdown--;
       if (countdownElement) {
         countdownElement.textContent = countdown;
       }      if (countdown <= 0) {
-        clearInterval(countdownInterval);
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
         // 修改重定向邏輯：返回到遊戲地圖頁面
         window.location.href = "/game/catch";
       }
