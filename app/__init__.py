@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 from flask import Flask, current_app, session, g
+import os
 import config as config_module
 import logging
 import threading
@@ -19,6 +20,10 @@ def create_app(config_name='default', load_tdx=True):
     """工廠函數，用於創建應用實例"""
     app = Flask(__name__)
     app.config.from_object(config_module.config[config_name])
+    app.config["SECRET_KEY"] = os.environ.get(
+        "SECRET_KEY",
+        app.config.get("SECRET_KEY", "dev-secret-key"),
+    )
     
     # 初始化擴展
     db.init_app(app)
