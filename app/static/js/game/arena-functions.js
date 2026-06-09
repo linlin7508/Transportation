@@ -64,7 +64,7 @@ function fetchArenasInfo() {
       const arenaCard = document.createElement('div');
       arenaCard.className = 'col-md-4 col-sm-6 mb-3';
       arenaCard.innerHTML = `
-        <div class="card arena-card" style="background-image: url('https://placehold.co/600x400/${routeColor.replace('#', '')}/white?text=${encodeURIComponent(arena.stopName)}')">
+        <div class="card arena-card" style="background-image: url('/static/img/Data/home.png')">
           <div class="arena-level-badge">${arena.level}</div>
           <div class="card-header arena-card-header text-center">
             <h5 class="mb-0">${arena.stopName}</h5>

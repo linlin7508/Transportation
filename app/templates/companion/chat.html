@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}陪伴精靈 - 精靈公車{% endblock %}
+
+{% block extra_css %}
+<style>
+  .companion-shell {
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  .companion-panel {
+    border: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  }
+
+  .companion-header {
+    background: linear-gradient(135deg, #243b55, #3a6073);
+    color: #fff;
+    padding: 22px;
+  }
+
+  .companion-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 1.7rem;
+  }
+
+  .chat-window {
+    height: min(58vh, 560px);
+    min-height: 360px;
+    overflow-y: auto;
+    background: #f7f9fb;
+    padding: 20px;
+  }
+
+  .chat-row {
+    display: flex;
+    margin-bottom: 14px;
+  }
+
+  .chat-row.user {
+    justify-content: flex-end;
+  }
+
+  .chat-bubble {
+    max-width: min(76%, 640px);
+    padding: 12px 14px;
+    border-radius: 8px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+
+  .chat-row.user .chat-bubble {
+    color: #fff;
+    background: #2f80ed;
+  }
+
+  .chat-row.assistant .chat-bubble {
+    color: #1f2933;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+  }
+
+  .chat-form {
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+    padding: 14px;
+  }
+
+  @media (max-width: 576px) {
+    .chat-bubble {
+      max-width: 88%;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="companion-shell">
+  <div class="card companion-panel">
+    <div class="companion-header d-flex align-items-center gap-3">
+      <div class="companion-avatar">
+        <i class="fas fa-cloud-moon"></i>
+      </div>
+      <div>
+        <h1 class="h3 mb-1">陪伴精靈：政大小羅</h1>
+        <p class="mb-0 opacity-75">厭世但溫柔，陪你聊通勤、指南山，還有今天有點累的心情。</p>
+      </div>
+    </div>
+
+    <div id="chatWindow" class="chat-window" aria-live="polite">
+      <div class="chat-row assistant">
+        <div class="chat-bubble">我在。你可以慢慢說，像等公車那樣，不急。</div>
+      </div>
+    </div>
+
+    <form id="chatForm" class="chat-form">
+      <div class="input-group">
+        <input id="chatInput" class="form-control" type="text" autocomplete="off" placeholder="跟政大小羅說點什麼..." required>
+        <button id="chatSubmit" class="btn btn-primary" type="submit">
+          <i class="fas fa-paper-plane me-1"></i>送出
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const chatWindow = document.getElementById('chatWindow');
+  const chatForm = document.getElementById('chatForm');
+  const chatInput = document.getElementById('chatInput');
+  const chatSubmit = document.getElementById('chatSubmit');
+
+  function appendMessage(role, content) {
+    const row = document.createElement('div');
+    row.className = `chat-row ${role}`;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble';
+    bubble.textContent = content;
+    row.appendChild(bubble);
+    chatWindow.appendChild(row);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  async function loadHistory() {
+    try {
+      const response = await fetch('/api/chat/history');
+      const data = await response.json();
+      if (!data.success || !Array.isArray(data.messages) || data.messages.length === 0) return;
+
+      chatWindow.innerHTML = '';
+      data.messages.forEach(message => appendMessage(message.role === 'assistant' ? 'assistant' : 'user', message.content));
+    } catch (error) {
+      console.warn('載入聊天紀錄失敗:', error);
+    }
+  }
+
+  chatForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    appendMessage('user', message);
+    chatInput.value = '';
+    chatInput.disabled = true;
+    chatSubmit.disabled = true;
+    appendMessage('assistant', '讓我想一下，指南山的風有點大...');
+    const pendingBubble = chatWindow.lastElementChild;
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+      const data = await response.json();
+      pendingBubble.remove();
+      appendMessage('assistant', data.success ? data.reply : (data.message || '我剛剛斷線了一下。'));
+    } catch (error) {
+      pendingBubble.remove();
+      appendMessage('assistant', '我暫時連不上雲端，像末班車剛走。等等再試一次。');
+    } finally {
+      chatInput.disabled = false;
+      chatSubmit.disabled = false;
+      chatInput.focus();
+    }
+  });
+
+  loadHistory();
+</script>
+{% endblock %}

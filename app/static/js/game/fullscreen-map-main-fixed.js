@@ -218,6 +218,7 @@ function createNewMap() {
     // 設置全局變量
     window.gameMap = map;
     window.busMap = map;
+    attachFullscreenLayers(map);
     
     // 設置最大縮放級別（與catch.html一致）
     setTimeout(() => {
@@ -229,6 +230,8 @@ function createNewMap() {
     
     // 初始化其他功能
     initializeMapFeatures();
+    loadFullscreenRoutes(map);
+    loadFullscreenStops(map);
     
     hideLoading();
   });
@@ -238,6 +241,124 @@ function createNewMap() {
     hideLoading();
     showGameAlert('地圖初始化失敗: ' + error.message, 'error');
   }
+}
+
+function attachFullscreenLayers(map) {
+  if (!map || typeof L === 'undefined') return;
+
+  window.routeLayer = L.layerGroup().addTo(map);
+  window.stopsLayer = L.layerGroup().addTo(map);
+  window.busesLayer = L.layerGroup().addTo(map);
+  window.creaturesLayer = L.layerGroup().addTo(map);
+  window.arenaLayer = L.layerGroup().addTo(map);
+  window.busPositionLayer = L.layerGroup().addTo(map);
+}
+
+function loadFullscreenRoutes(map) {
+  if (!map || typeof L === 'undefined') return;
+
+  const routes = [
+    { key: 'cat-right-route', name: '貓空右線', color: '#ff9800' },
+    { key: 'cat-left-route', name: '貓空左線(動物園)', color: '#4caf50' },
+    { key: 'cat-left-zhinan-route', name: '貓空左線(指南宮)', color: '#9c27b0' },
+    { key: 'brown-3-route', name: '棕3路線', color: '#8B4513' }
+  ];
+
+  const routeLayer = window.routeLayer || L.layerGroup().addTo(map);
+  window.routeLayer = routeLayer;
+  routeLayer.clearLayers();
+
+  routes.forEach(route => {
+    fetch(`/game/api/bus/${route.key}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`${route.name} HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(points => {
+        const coordinates = (Array.isArray(points) ? points : [])
+          .map(point => [
+            Number(point.PositionLat || point.positionLat || point.lat || point.latitude),
+            Number(point.PositionLon || point.PositionLng || point.lng || point.lon || point.longitude)
+          ])
+          .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
+
+        if (!coordinates.length) {
+          throw new Error(`${route.name} 無有效座標`);
+        }
+
+        L.polyline(coordinates, {
+          color: route.color,
+          weight: 6,
+          opacity: 0.9
+        }).bindPopup(`<strong>${route.name}</strong>`).addTo(routeLayer);
+
+        console.log(`${route.name} 已繪製，座標點: ${coordinates.length}`);
+      })
+      .catch(error => {
+        console.error(`${route.name} 繪製失敗:`, error);
+      });
+  });
+}
+
+function loadFullscreenStops(map) {
+  if (!map || typeof L === 'undefined') return;
+
+  const routes = [
+    { key: 'cat-right-stops', name: '貓空右線', color: '#ff9800' },
+    { key: 'cat-left-stops', name: '貓空左線(動物園)', color: '#4caf50' },
+    { key: 'cat-left-zhinan-stops', name: '貓空左線(指南宮)', color: '#9c27b0' },
+    { key: 'brown-3-stops', name: '棕3路線', color: '#8B4513' }
+  ];
+
+  const stopsLayer = window.stopsLayer || L.layerGroup().addTo(map);
+  window.stopsLayer = stopsLayer;
+  stopsLayer.clearLayers();
+
+  routes.forEach(route => {
+    fetch(`/game/api/bus/${route.key}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`${route.name} stops HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(stops => {
+        const seen = new Set();
+        (Array.isArray(stops) ? stops : []).forEach((stop, index) => {
+          const position = stop.StopPosition || stop.StationPosition || stop;
+          const lat = Number(position.PositionLat || position.lat || position.latitude);
+          const lng = Number(position.PositionLon || position.lng || position.lon || position.longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+          const name = stop.StopName?.Zh_tw || stop.StationName?.Zh_tw || stop.StopName || stop.name || `站點 ${index + 1}`;
+          const stopId = stop.StopID || stop.StationID || `${route.key}-${index}`;
+          const markerKey = `${route.key}-${stopId}-${lat.toFixed(5)}-${lng.toFixed(5)}`;
+          if (seen.has(markerKey)) return;
+          seen.add(markerKey);
+
+          L.circleMarker([lat, lng], {
+            radius: 6,
+            color: '#ffffff',
+            weight: 2,
+            fillColor: route.color,
+            fillOpacity: 0.95,
+            opacity: 1
+          }).bindPopup(`
+            <div class="bus-stop-popup">
+              <strong>${name}</strong>
+              <div><small>${route.name}</small></div>
+            </div>
+          `).addTo(stopsLayer);
+        });
+
+        console.log(`${route.name} 站點已繪製，數量: ${seen.size}`);
+      })
+      .catch(error => {
+        console.error(`${route.name} 站點繪製失敗:`, error);
+      });
+  });
 }
 
 // 初始化地圖功能 - 與catch.html保持一致

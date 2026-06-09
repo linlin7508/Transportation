@@ -377,6 +377,17 @@ class DailyMigration {
 
     showError(message) {
         console.error('每日遷移錯誤:', message);
+
+        if (this.elements.statusBadge) {
+            this.elements.statusBadge.className = 'migration-status-badge';
+            this.elements.statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>載入失敗</span>';
+        }
+
+        if (this.elements.migrationBtn) {
+            this.elements.migrationBtn.disabled = false;
+            this.elements.migrationBtn.innerHTML = '<i class="fas fa-redo me-2"></i><span>重新載入</span>';
+            this.elements.migrationBtn.onclick = () => this.loadMigrationStatus();
+        }
         
         // 顯示錯誤提示
         const alertDiv = document.createElement('div');

@@ -25,6 +25,11 @@ document.addEventListener('DOMContentLoaded', function() {
  * 初始化 Firebase
  */
 function initializeFirebase() {
+    if (typeof firebase === 'undefined') {
+        console.warn('Firebase 未載入，我的精靈改用後端 API');
+        return;
+    }
+
     if (!firebase.apps.length) {
         firebase.initializeApp(window.firebaseConfig);
     }
@@ -97,17 +102,16 @@ function loadUserData() {
  */
 async function loadUserCreatures() {
     try {
-        const querySnapshot = await db.collection('users')
-            .doc(currentUserId)
-            .collection('user_creatures')
-            .get();
-        
-        userCreatures = [];
-        querySnapshot.forEach(doc => {
-            const creatureData = doc.data();
-            creatureData.id = doc.id; // 添加文檔 ID
-            userCreatures.push(creatureData);
+        const response = await fetch('/game/api/user/creatures', {
+            credentials: 'same-origin'
         });
+
+        if (!response.ok) {
+            throw new Error(`載入精靈 API 失敗: ${response.status}`);
+        }
+
+        const data = await response.json();
+        userCreatures = Array.isArray(data) ? data : (data.creatures || []);
 
         console.log(`成功載入 ${userCreatures.length} 隻精靈`);        // 調試：顯示前幾隻精靈的數據結構，幫助確認字段名稱
         if (userCreatures.length > 0) {
@@ -659,7 +663,7 @@ function showEmptyState() {
     if (container) {
         container.innerHTML = `
             <div class="col-12 text-center py-5">
-                <img src="https://cdn-icons-png.flaticon.com/512/4698/4698906.png" 
+                <img src="/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png" 
                      alt="尚無精靈" style="max-width: 120px; opacity: 0.5;" class="mb-3">
                 <h5 class="text-muted mb-2">還沒有精靈</h5>
                 <p class="text-muted mb-3">您還沒有捕捉到任何精靈，快去探索吧！</p>
@@ -781,12 +785,12 @@ function capitalizeFirst(str) {
  */
 function getDefaultImage(type) {
     const typeImages = {
-        water: 'https://cdn-icons-png.flaticon.com/512/2871/2871431.png',
-        fire: 'https://cdn-icons-png.flaticon.com/512/785/785116.png',
-        wood: 'https://cdn-icons-png.flaticon.com/512/1795/1795543.png',
-        light: 'https://cdn-icons-png.flaticon.com/512/869/869869.png',
-        dark: 'https://cdn-icons-png.flaticon.com/512/2871/2871394.png',
-        normal: 'https://cdn-icons-png.flaticon.com/512/188/188918.png'
+        water: '/static/img/Data/%E6%BC%A3%E6%BC%AA%E7%8A%AC.png',
+        fire: '/static/img/Data/%E7%81%AB%E7%8B%90%E9%9D%88.png',
+        wood: '/static/img/Data/%E6%A3%AE%E6%9E%97%E7%8B%BC.png',
+        light: '/static/img/Data/%E5%85%89%E9%B6%B4.png',
+        dark: '/static/img/Data/%E5%A4%9C%E7%83%8F.png',
+        normal: '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'
     };
     
     return typeImages[type] || typeImages.normal;

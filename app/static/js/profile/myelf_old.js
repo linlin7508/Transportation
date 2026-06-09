@@ -486,7 +486,7 @@ function showEmptyState() {
     
     container.innerHTML = `
         <div class="col-12 text-center py-5">
-            <img src="https://cdn-icons-png.flaticon.com/512/4698/4698906.png" 
+            <img src="/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png" 
                  alt="尚無精靈" style="max-width: 120px; opacity: 0.5;" class="mb-3">
             <h5 class="text-muted mb-2">您還沒有捕捉到任何精靈</h5>
             <p class="text-muted">快去地圖上尋找並捕捉您的第一隻精靈吧！</p>
@@ -528,12 +528,12 @@ function updateElement(id, content) {
  */
 function getDefaultImage(elementType) {
     const defaultImages = {
-        water: 'https://via.placeholder.com/150/4FC3F7/FFFFFF?text=水',
-        fire: 'https://via.placeholder.com/150/F44336/FFFFFF?text=火',
-        wood: 'https://via.placeholder.com/150/4CAF50/FFFFFF?text=草',
-        light: 'https://via.placeholder.com/150/FFC107/FFFFFF?text=光',
-        dark: 'https://via.placeholder.com/150/424242/FFFFFF?text=暗',
-        normal: 'https://via.placeholder.com/150/9E9E9E/FFFFFF?text=一般'
+        water: '/static/img/Data/%E6%BC%A3%E6%BC%AA%E7%8A%AC.png',
+        fire: '/static/img/Data/%E7%81%AB%E7%8B%90%E9%9D%88.png',
+        wood: '/static/img/Data/%E6%A3%AE%E6%9E%97%E7%8B%BC.png',
+        light: '/static/img/Data/%E5%85%89%E9%B6%B4.png',
+        dark: '/static/img/Data/%E5%A4%9C%E7%83%8F.png',
+        normal: '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'
     };
     
     return defaultImages[elementType] || defaultImages.normal;

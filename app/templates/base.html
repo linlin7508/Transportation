@@ -12,20 +12,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- 自定義CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics-compat.js"></script>
-    <!-- Firebase 初始化 -->
-    <script src="{{ url_for('static', filename='js/firebase-init-legacy.js') }}"></script>
     <!-- 移動設備觸控優化 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#3d85c6">
     <!-- PWA支援 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/app-icon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/Data/home.png') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="game-background">
@@ -58,6 +50,11 @@
                     <li class="nav-item">
                         <a class="nav-link game-nav-link" href="{{ url_for('game.catch') }}">
                             <i class="fas fa-search me-1"></i> 探索捕捉
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link game-nav-link" href="{{ url_for('companion.index') }}">
+                            <i class="fas fa-comment-dots me-1"></i> 陪伴精靈
                         </a>
                     </li>                    <li class="nav-item">
                         <a class="nav-link game-nav-link" href="{{ url_for('daily_migration.daily_migration_page') }}">

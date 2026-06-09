@@ -15,7 +15,7 @@
     <div class="col-md-12">
       <div class="card shadow-lg mb-4">
         <div class="card-body p-3">
-          <div id="map" class="mb-3"></div>
+          <div id="map" class="mb-3" style="height:500px;width:100%;"></div>
           
           <div class="row">
             <div class="col-md-6">              <div class="bus-routes-legend mb-3">
@@ -163,14 +163,28 @@
 <script type="text/javascript">
   // 初始化時設置最大縮放級別
   document.addEventListener('DOMContentLoaded', function() {
-    // 當地圖初始化完成後，設置最大縮放
-    setTimeout(function() {
-      if (window.gameMap) {
-        window.gameMap.setZoom(19); // 設置為最大缩放级别
-      } else if (window.busMap) {
-        window.busMap.setZoom(19); // 設置為最大縮放级別
+    function applyReadyMapZoom(map) {
+      if (!map || typeof map.setZoom !== 'function') return;
+      map.setZoom(19);
+      if (typeof map.invalidateSize === 'function') {
+        map.invalidateSize(true);
       }
-    }, 1000);
+    }
+
+    window.addEventListener('busMapReady', function(event) {
+      applyReadyMapZoom(event.detail && event.detail.map ? event.detail.map : window.busMap);
+    });
+
+    let mapReadyChecks = 0;
+    const mapReadyFallback = setInterval(function() {
+      const map = window.gameMap || window.busMap;
+      if (map) {
+        clearInterval(mapReadyFallback);
+        applyReadyMapZoom(map);
+      } else if (++mapReadyChecks >= 40) {
+        clearInterval(mapReadyFallback);
+      }
+    }, 500);
     
     // 為目前位置按鈕添加事件處理
     document.getElementById('goToCurrentLocationBtn').addEventListener('click', function() {

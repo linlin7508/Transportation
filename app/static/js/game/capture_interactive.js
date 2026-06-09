@@ -435,7 +435,10 @@ class CaptureInteractive {  constructor() {
     this.elements.magicCircleInner.classList.remove('active');
     this.elements.captureEffect.classList.remove('active');
     this.elements.resultMessage.classList.remove('visible', 'success', 'failure');
-    this.elements.creatureImage.classList.remove('captured');
+    this.elements.creatureImage.classList.remove('captured', 'capture-failed');
+    this.elements.magicCircle.classList.remove('capture-failed');
+    this.elements.magicCircleInner.classList.remove('capture-failed');
+    this.elements.captureEffect.classList.remove('capture-failed');
     
     // 隱藏魔法陣
     setTimeout(() => {
@@ -451,6 +454,7 @@ class CaptureInteractive {  constructor() {
     // 清除所有特效粒子
     document.querySelectorAll('.magic-particle').forEach(p => p.remove());
     document.querySelectorAll('.firework-particle').forEach(p => p.remove());
+    document.querySelectorAll('.failure-shard').forEach(p => p.remove());
   }
   
   // 創建粒子效果
@@ -531,6 +535,30 @@ class CaptureInteractive {  constructor() {
       setTimeout(() => {
         firework.remove();
       }, duration * 1000);
+    }
+  }
+
+  // 創建捕捉失敗效果
+  playFailureAnimation() {
+    const container = document.querySelector('.capture-container');
+    if (!container) return;
+
+    this.elements.magicCircle.classList.add('capture-failed');
+    this.elements.magicCircleInner.classList.add('capture-failed');
+    this.elements.captureEffect.classList.add('capture-failed');
+    this.elements.creatureImage.classList.add('capture-failed');
+
+    for (let i = 0; i < 28; i++) {
+      const shard = document.createElement('div');
+      shard.className = 'failure-shard';
+      shard.style.left = '50%';
+      shard.style.top = '50%';
+      shard.style.setProperty('--angle', `${Math.random() * 360}deg`);
+      shard.style.setProperty('--distance', `${80 + Math.random() * 130}px`);
+      shard.style.animationDelay = `${Math.random() * 0.12}s`;
+      container.appendChild(shard);
+
+      setTimeout(() => shard.remove(), 1100);
     }
   }
     // 顯示捕捉結果模態框
@@ -675,12 +703,20 @@ class CaptureInteractive {  constructor() {
       // 執行捕捉動畫
       await this.performCaptureAnimation();
       
-      // 使用新的機率計算系統進行捕捉判定
-      const isSuccess = Math.random() < captureRate;
-      console.log(`捕捉判定：隨機數 < ${captureRate} = ${isSuccess ? '成功' : '失敗'}`);
-      
-      // 處理捕捉結果
-      await this.handleCaptureResult(isSuccess);
+      const creatureId = document.querySelector('[data-creature-id]')?.dataset.creatureId ||
+                        window.creatureData?.id;
+      if (!creatureId || typeof CaptureHandler === 'undefined') {
+        throw new Error('捕捉處理器尚未初始化');
+      }
+
+      const result = await CaptureHandler.captureCreature(creatureId, {
+        circleType: this.selectedCircleType
+      });
+      window.lastCaptureResult = result;
+      console.log('後端捕捉判定結果:', result);
+
+      const isSuccess = Boolean(result.success && result.creature);
+      await this.handleCaptureResult(isSuccess, result);
       
     } catch (error) {
       console.error('捕捉過程出錯:', error);
@@ -717,45 +753,56 @@ class CaptureInteractive {  constructor() {
   }
   
   // 處理捕捉結果
-  async handleCaptureResult(isSuccess) {
+  async handleCaptureResult(isSuccess, captureResult = null) {
     if (isSuccess) {
       // 捕捉成功
       this.elements.resultMessage.textContent = '捕捉成功！';
       this.elements.resultMessage.classList.add('success', 'visible');
       this.elements.creatureImage.classList.add('captured');
       this.createFireworks();
-        // 調用捕捉處理器
-      if (typeof CaptureHandler !== 'undefined') {
+        // 舊流程相容：如果外部沒有先提供後端結果，才在這裡呼叫捕捉處理器。
+      if (!captureResult && typeof CaptureHandler !== 'undefined') {
         try {
           const creatureId = document.querySelector('[data-creature-id]')?.dataset.creatureId || 
                             window.creatureData?.id;
             if (creatureId) {
-            const result = await CaptureHandler.captureCreature(creatureId);
+            const result = await CaptureHandler.captureCreature(creatureId, {
+              circleType: this.selectedCircleType
+            });
             console.log('捕捉處理結果:', result);
+            captureResult = result;
+            window.lastCaptureResult = result;
+          }
+        } catch (error) {
+          console.error('捕捉處理器調用失敗:', error);
+        }
+      }
+
+      if (captureResult) {
               // 如果捕捉成功，更新成功消息以包含經驗值信息
-            if (result.success && result.creature) {
+            if (captureResult.success && captureResult.creature) {
               // 優先使用後端返回的用戶等級信息
               let userLevel = 1; // 默認等級
               let experienceGained = 20; // 默認經驗值
                 // 檢查是否有用戶等級更新信息
-              if (result.user_level_info && result.user_level_info.new_level) {
-                userLevel = result.user_level_info.new_level;
-                experienceGained = result.user_level_info.experience_gained || 20;
-                console.log('使用後端返回的用戶等級信息:', result.user_level_info);
+              if (captureResult.user_level_info && captureResult.user_level_info.new_level) {
+                userLevel = captureResult.user_level_info.new_level;
+                experienceGained = captureResult.user_level_info.experience_gained || 20;
+                console.log('使用後端返回的用戶等級信息:', captureResult.user_level_info);
                 
                 // 更新全局用戶數據
                 if (window.userData) {
                   window.userData.level = userLevel;
-                  window.userData.experience = result.user_level_info.current_experience || 0;
+                  window.userData.experience = captureResult.user_level_info.current_experience || 0;
                 }
                 
                 // 立即更新經驗值顯示（如果函數存在）
                 if (typeof window.updateExperienceDisplay === 'function') {
                   window.updateExperienceDisplay(userLevel, experienceGained);
                 }
-              } else if (result.creature.level) {
+              } else if (captureResult.creature.level) {
                 // 備選：使用精靈數據中的等級（如果有的話）
-                userLevel = result.creature.level;
+                userLevel = captureResult.creature.level;
               } else if (window.userData && window.userData.level) {
                 // 最後備選：使用窗口中的用戶數據
                 userLevel = window.userData.level;
@@ -767,12 +814,7 @@ class CaptureInteractive {  constructor() {
               console.log(`更新等級顯示: ${userLevel} 級, 獲得經驗值: ${experienceGained}`);
               
               // 保存捕捉結果供後續使用
-              window.lastCaptureResult = result;
             }
-          }
-        } catch (error) {
-          console.error('捕捉處理器調用失敗:', error);
-        }
       }
       
       // 顯示成功模態框
@@ -782,6 +824,7 @@ class CaptureInteractive {  constructor() {
       
     } else {
       // 捕捉失敗
+      this.playFailureAnimation();
       this.elements.resultMessage.textContent = '捕捉失敗！';
       this.elements.resultMessage.classList.add('failure', 'visible');
       

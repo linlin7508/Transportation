@@ -403,9 +403,41 @@ function useBackupStops(routeKey, routeName) {
     console.log(`備用站點 ${routeKey} 繪製完成，共 ${backupStops.length} 個站點`);
 }
 
-// 繪製站點 (僅創建道館圖標)
+function drawStopMarker(stop, color, routeName, isBackup = false) {
+    if (!stop || !Array.isArray(stop.position) || typeof L === 'undefined') {
+        return null;
+    }
+
+    const lat = Number(stop.position[0]);
+    const lng = Number(stop.position[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return null;
+    }
+
+    const marker = L.circleMarker([lat, lng], {
+        radius: 6,
+        color: '#ffffff',
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.95,
+        opacity: 1,
+        className: 'bus-stop-marker'
+    }).addTo(stopsLayer);
+
+    marker.bindPopup(`
+        <div class="bus-stop-popup">
+            <strong>${stop.name}</strong>
+            <div><small>${routeName}${isBackup ? '（備用資料）' : ''}</small></div>
+        </div>
+    `);
+
+    return marker;
+}
+
+// 繪製站點和對應道館圖標
 function drawStop(stop, color, routeName, isBackup = false) {
     console.log(`嘗試創建道館: ${stop.name} at [${stop.position[0]}, ${stop.position[1]}]`);
+    drawStopMarker(stop, color, routeName, isBackup);
     
     // 檢查站點名稱是否已存在（不區分大小寫且去除空格）
     const normalizeName = name => name.toLowerCase().replace(/\s+/g, '');

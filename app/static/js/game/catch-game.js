@@ -9,10 +9,48 @@ var currentCreatures = [];
 var capturedCreatures = 0;
 var updateTimer = 30;
 var updateInterval;
-var dataSourceToggle = true; // true 表示從Firebase獲取，false 表示從CSV獲取
+var dataSourceToggle = true; // 保留舊切換旗標；地圖精靈目前統一由 get-all 限時生成 API 提供
 var creatureUpdateInterval = 15000; // 15秒更新一次，實現交替更新
 var firebaseListener = null; // 用於存儲Firebase監聽器的引用
 var lastDataSourceUpdateTime = 0; // 上次資料來源更新時間
+
+function getLocationErrorMessage(error) {
+  if (!error) {
+    return '無法獲取您的位置，請確認瀏覽器允許定位。';
+  }
+
+  if (typeof error === 'string') {
+    if (error.includes('HTTPS') || error.includes('localhost')) {
+      return '目前網址不是 HTTPS 或 localhost，瀏覽器不會跳出定位授權視窗。請改用 http://localhost:3001 或 HTTPS 開啟。';
+    }
+    if (error.includes('拒絕') || error.includes('權限')) {
+      return '定位權限已被拒絕。請點網址列旁的網站設定，將「位置」改成允許後重新整理。';
+    }
+    return error;
+  }
+
+  if (error.code === 'INSECURE_CONTEXT') {
+    return '目前網址不是 HTTPS 或 localhost，瀏覽器不會跳出定位授權視窗。請改用 http://localhost:3001 或 HTTPS 開啟。';
+  }
+
+  if (error.code === 'PERMISSION_DENIED' || error.code === 1) {
+    return '定位權限已被拒絕。請點網址列旁的網站設定，將「位置」改成允許後重新整理。';
+  }
+
+  if (error.code === 'POSITION_UNAVAILABLE' || error.code === 2) {
+    return '瀏覽器無法取得位置。請確認系統定位服務已開啟，並允許瀏覽器使用定位。';
+  }
+
+  if (error.code === 'TIMEOUT' || error.code === 3) {
+    return '定位逾時。請確認網路/GPS 可用後再按一次目前位置。';
+  }
+
+  if (error.code === 'MAP_NOT_READY') {
+    return '地圖尚未初始化完成，請稍後再按一次重新定位。';
+  }
+
+  return error.message || '無法獲取您的位置，請確認瀏覽器允許定位。';
+}
 
 // DOM載入完成後初始化遊戲
 document.addEventListener('DOMContentLoaded', function() {
@@ -25,12 +63,12 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('refreshLocationBtn').addEventListener('click', function() {
     console.log('點擊了重新定位按鈕');
     showLoading();
-    if (typeof updateUserLocation === 'function') {
-      updateUserLocation().then(() => {
+    if (typeof window.updateUserLocation === 'function') {
+      window.updateUserLocation().then(() => {
         hideLoading();
-      }).catch(() => {
+      }).catch((error) => {
         hideLoading();
-        showGameAlert('無法獲取您的位置，請確保已授予位置權限。', 'warning');
+        showGameAlert(getLocationErrorMessage(error), 'warning', 7000);
       });
     } else {
       console.error('updateUserLocation 函數不存在');
@@ -87,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // 檢查地圖是否已初始化
-function checkMapInitialized(callback) {
+function checkMapInitialized(callback, retryCount = 0) {
   console.log('檢查地圖初始化狀態...');
 
   // 等待bus-route-map.js初始化的全局地圖
@@ -96,14 +134,38 @@ function checkMapInitialized(callback) {
     // 確保地圖大小正確
     window.busMap.invalidateSize();
 
+    const arenaLayerCount = window.arenaLayer && typeof window.arenaLayer.getLayers === 'function'
+      ? window.arenaLayer.getLayers().length
+      : 0;
+    if (arenaLayerCount === 0 && typeof window.renderAllArenas === 'function') {
+      console.log('道館圖層為空，重新渲染道館');
+      window.renderAllArenas();
+    }
+
     // 如果提供了回調函數，執行它
     if (typeof callback === 'function') {
       callback();
     }
   } else {
     console.log('地圖尚未初始化，等待...');
+    if (retryCount >= 10) {
+      console.warn('地圖等待逾時，嘗試使用直接建圖備援');
+      if (typeof window.createDirectMap === 'function') {
+        window.createDirectMap('map');
+        setTimeout(() => {
+          if (typeof callback === 'function' && (window.busMap || window.gameMap)) {
+            callback();
+          }
+        }, 800);
+        return;
+      }
+
+      if (typeof window.initApp === 'function') {
+        window.initApp('map');
+      }
+    }
     // 如果地圖尚未初始化，等待並重試
-    setTimeout(() => checkMapInitialized(callback), 1000);
+    setTimeout(() => checkMapInitialized(callback, retryCount + 1), 1000);
   }
 }
 
@@ -147,22 +209,21 @@ function startUpdateCountdown() {
   }, 1000);
 }
 
-// 修改更新邏輯，統一從CSV獲取資料
+// 修改更新邏輯，統一從伺服器取得目前活著的限時精靈
 function fetchCreatures() {
-  console.log('從CSV獲取精靈資料...');
+  console.log('獲取目前活著的限時精靈...');
   showLoading();
 
-  // 調用API從CSV獲取精靈資料
-  fetch('/game/api/route-creatures/get-from-csv')
+  fetch('/game/api/route-creatures/get-all')
     .then(response => {
       if (!response.ok) {
-        throw new Error('從CSV獲取精靈失敗');
+        throw new Error('獲取限時精靈失敗');
       }
       return response.json();
     })
     .then(data => {
       hideLoading();
-      console.log('從CSV獲取到的精靈:', data);
+      console.log('獲取到的限時精靈:', data);
 
       if (data.success) {
         // 清除現有精靊標記
@@ -175,16 +236,16 @@ function fetchCreatures() {
         displayCreaturesDirectly(currentCreatures);
 
         // 顯示提示
-        showGameAlert(`已從CSV更新 ${currentCreatures.length} 隻精靈！`, 'info', 3000);
+        showGameAlert(`已更新 ${currentCreatures.length} 隻限時精靈！`, 'info', 3000);
       } else {
-        console.error('從CSV獲取精靈返回失敗:', data.message);
+        console.error('獲取限時精靈返回失敗:', data.message);
         showGameAlert(data.message || '獲取精靈資訊失敗!', 'warning');
       }
     })
     .catch(error => {
       hideLoading();
-      console.error('從CSV獲取精靈錯誤:', error);
-      showGameAlert('無法讀取CSV資料，請稍後再試！', 'danger');
+      console.error('獲取限時精靈錯誤:', error);
+      showGameAlert('無法讀取限時精靈資料，請稍後再試！', 'danger');
     });
 }
 
@@ -196,10 +257,10 @@ function updateAllGameData() {
   showLoading();
   
   // 1. 更新精靈數據
-  fetch('/game/api/route-creatures/get-from-csv')
+  fetch('/game/api/route-creatures/get-all')
     .then(response => {
       if (!response.ok) {
-        throw new Error('從CSV獲取精靈失敗');
+        throw new Error('獲取限時精靈失敗');
       }
       return response.json();
     })
@@ -220,7 +281,10 @@ function updateAllGameData() {
       // 2. 更新公車位置（如果公車位置功能可用）
       if (typeof window.updateBusPositions === 'function') {
         console.log('更新公車位置...');
-        return window.updateBusPositions();
+        return window.updateBusPositions().catch(error => {
+          console.warn('公車位置更新失敗，略過本次公車同步:', error);
+          return null;
+        });
       } else {
         console.warn('公車位置更新功能不可用');
         return Promise.resolve();
@@ -230,7 +294,10 @@ function updateAllGameData() {
       // 3. 更新用戶位置（如果定位功能可用）
       console.log('更新用戶位置...');
       if (typeof window.updateUserLocation === 'function') {
-        return window.updateUserLocation();
+        return window.updateUserLocation().catch(error => {
+          console.warn('定位更新失敗，保留地圖與精靈資料:', error);
+          return null;
+        });
       } else {
         console.warn('用戶位置更新功能不可用');
         return Promise.resolve();
@@ -242,7 +309,7 @@ function updateAllGameData() {
       
       // 統計更新結果
       const creatureCount = currentCreatures ? currentCreatures.length : 0;
-      showGameAlert(`數據已更新！精靈: ${creatureCount} 隻，公車和位置已同步`, 'success', 3000);
+      showGameAlert(`數據已更新！精靈: ${creatureCount} 隻`, 'success', 3000);
     })
     .catch(error => {
       hideLoading();
@@ -414,6 +481,7 @@ function displayCreaturesDirectly(creatures) {
       
       const position = creature.position || { lat: 25.033 + (Math.random() * 0.02), lng: 121.565 + (Math.random() * 0.02) };
       const name = creature.name || '未知精靈';
+      const imageUrl = creature.image_url || creature.img || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
       
       // 輸出位置數據進行調試
       console.log(`精靈 ${name} 的位置: lat=${position.lat}, lng=${position.lng}`);
@@ -440,31 +508,47 @@ function displayCreaturesDirectly(creatures) {
         }
       }
       
-      // 創建小圓點標記 - 修改為更小的圓點
-      const circleMarker = L.circleMarker([lat, lng], {
-        radius: 10,                 // 小圓點大小從20減為10
-        color: '#000000',           // 邊框顏色
-        fillColor: color,           // 填充顏色
-        fillOpacity: 0.9,           // 填充不透明度
-        weight: 2,                  // 邊框寬度從3減為2
-        className: 'creature-circle-marker-' + index
+      const creatureIcon = L.divIcon({
+        className: 'creature-circle-marker creature-image-marker creature-circle-marker-' + index,
+        html: `
+          <div style="
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: 3px solid ${color};
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <img src="${imageUrl}" alt="${name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'">
+          </div>
+        `,
+        iconSize: [46, 46],
+        iconAnchor: [23, 23],
+        popupAnchor: [0, -24]
       });
+
+      const creatureMarker = L.marker([lat, lng], { icon: creatureIcon });
       
       // 直接添加到地圖
-      circleMarker.addTo(window.busMap);
-      console.log(`精靈小圓點已添加: ${name} 在 [${lat}, ${lng}]`);
+      creatureMarker.addTo(window.busMap);
+      console.log(`精靈圖片標記已添加: ${name} (${imageUrl}) 在 [${lat}, ${lng}]`);
       
       // 保存標記引用 - 同時保存到circle_marker和direct_marker屬性中
-      creature.circle_marker = circleMarker;
-      creature.direct_marker = circleMarker; // 確保在捕獲時能夠正確找到
+      creature.circle_marker = creatureMarker;
+      creature.direct_marker = creatureMarker; // 確保在捕獲時能夠正確找到
       
       // 添加點擊事件處理
-      circleMarker.on('click', function() {
+      creatureMarker.on('click', function() {
         console.log(`點擊了精靈 ${name}`);
         showGameAlert(`你發現了 ${name}！點擊捕捉按鈕來捕捉它。`, 'success');
           // 顯示精靈信息
-        circleMarker.bindPopup(`
+        creatureMarker.bindPopup(`
           <div class="text-center py-2">
+            <img src="${imageUrl}" alt="${name}" style="width: 96px; height: 96px; object-fit: contain; margin-bottom: 8px;" onerror="this.src='/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'">
             <h5 class="mb-2">${name}</h5>
             <button class="btn btn-success btn-sm w-100 catch-btn" onclick="catchCreature('${creature.id}')">
               <i class="fas fa-hand-sparkles me-1"></i>捕捉
@@ -477,7 +561,7 @@ function displayCreaturesDirectly(creatures) {
       if (!window.creatureMarkers) {
         window.creatureMarkers = [];
       }
-      window.creatureMarkers.push(circleMarker);
+      window.creatureMarkers.push(creatureMarker);
       
       console.log(`成功創建精靈標記: ${name}`);
     } catch (err) {
@@ -489,7 +573,7 @@ function displayCreaturesDirectly(creatures) {
   window.busMap.invalidateSize();
   
   // 顯示提示
-  showGameAlert(`已在地圖上顯示 ${creatures.length} 隻精靈！尋找彩色小圓點。`, 'success', 8000);
+  showGameAlert(`已在地圖上顯示 ${creatures.length} 隻精靈！`, 'success', 8000);
 }
 
 // 添加一個明顯的測試標記，用於驗證地圖是否正常工作

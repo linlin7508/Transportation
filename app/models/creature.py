@@ -1,6 +1,7 @@
 from datetime import datetime
 import enum
-from app import db
+from app.extensions import db
+from app.services.creature_images import get_creature_image_url
 
 class ElementType(enum.Enum):
     """精靈元素類型"""
@@ -34,7 +35,7 @@ class Creature(db.Model):
     captured_players = db.Column(db.Text, default="")
     
     # 關聯
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'))
     bus_route_id = db.Column(db.Integer, db.ForeignKey('bus_routes.id'), nullable=True)
     arena_id = db.Column(db.Integer, db.ForeignKey('arenas.id'), nullable=True)
       # 關聯查詢
@@ -65,35 +66,6 @@ class Creature(db.Model):
             return []
         return self.captured_players.split(',')
     
-    def is_effective_against(self, other_creature):
-        """檢查屬性相剋關係"""
-        # 元素克制關係字典
-        effectiveness = {
-            ElementType.LIGHT: [ElementType.DARK],     # 光克暗
-            ElementType.DARK: [ElementType.NORMAL],    # 暗克普
-            ElementType.NORMAL: [ElementType.LIGHT],   # 普克光
-            ElementType.WATER: [ElementType.FIRE],     # 水克火
-            ElementType.FIRE: [ElementType.WOOD],      # 火克草
-            ElementType.WOOD: [ElementType.WATER]      # 草克水
-        }
-        
-        return other_creature.element_type in effectiveness.get(self.element_type, [])
-    
-    def calculate_damage(self, target):
-        """計算對目標造成的傷害"""
-        # 基本傷害公式
-        base_damage = max(5, self.attack)
-        
-        # 屬性克制加成
-        if self.is_effective_against(target):
-            base_damage = int(base_damage * 1.5)  # 克制加成50%
-            
-        # 等級差異加成
-        level_bonus = max(0, (self.level - target.level) * 0.1)
-        final_damage = int(base_damage * (1 + level_bonus))
-        
-        return max(1, final_damage)  # 最小傷害為1
-    
     def to_dict(self):
         """將精靈數據轉換為字典（用於API）"""
         return {
@@ -101,12 +73,17 @@ class Creature(db.Model):
             'random_id': self.random_id,
             'name': self.name,
             'species': self.species,
+            'rate': self.species,
+            'rarity': self.species,
             'element_type': self.element_type.value,
+            'element': self.element_type.value,
+            'type': self.element_type.value,
             'level': self.level,
             'experience': self.experience,
             'attack': self.attack,
+            'power': self.attack,
             'hp': self.hp,
-            'image_url': self.image_url,
+            'image_url': self.image_url or get_creature_image_url(self.name),
             'owner_id': self.user_id,
             'bus_route': self.bus_route.name if self.bus_route else None,
             'captured_players': self.get_captured_players()

@@ -102,9 +102,16 @@ async function loadPotions() {
     // 清空現有內容
     grid.innerHTML = '';
     
+    const apiPotions = Array.isArray(data.potions)
+      ? data.potions
+      : Object.entries(data.potions || {}).map(([key, value]) => ({
+          key,
+          count: typeof value === 'number' ? value : (value?.count || 0)
+        }));
+
     // 合併API數據與靜態數據
     const combinedData = potionData.map(staticItem => {
-      const apiItem = data.potions.find(api => api.key === staticItem.key);
+      const apiItem = apiPotions.find(api => api.key === staticItem.key);
       return {
         ...staticItem,
         quantity: apiItem ? apiItem.count : 0

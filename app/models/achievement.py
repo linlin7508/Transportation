@@ -7,6 +7,8 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Dict, List, Any
 import time
+import uuid
+from app.extensions import db
 
 class AchievementCategory(Enum):
     """成就類別"""
@@ -481,3 +483,17 @@ CATEGORY_ICONS = {
     AchievementCategory.LOGIN: "fas fa-calendar",
     AchievementCategory.SPECIAL: "fas fa-star"
 }
+
+
+# SQLAlchemy ORM Models
+class UserAchievement(db.Model):
+    """用戶成就記錄"""
+    __tablename__ = "user_achievements"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    achievement_id = db.Column(db.String(50), nullable=False)  # References ACHIEVEMENTS dict key
+    unlocked_at = db.Column(db.DateTime, default=db.func.now())
+    progress = db.Column(db.Integer, default=0)  # For tracking progress towards achievement
+    
+    __table_args__ = (db.UniqueConstraint('user_id', 'achievement_id', name='uq_user_achievement'),)

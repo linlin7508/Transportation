@@ -51,6 +51,7 @@ function displayCreaturesOnMap(creatures) {
     const species = creature.species || '一般種';
     const hp = creature.hp || 100;
     const attack = creature.attack || 10;
+    const imageUrl = creature.image_url || creature.img || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
     
     // 計算剩餘時間
     let remainingTime = 0;
@@ -72,29 +73,24 @@ function displayCreaturesOnMap(creatures) {
       default: bgColor = '#95a5a6';
     }
     
-    // 獲取表情符號
-    let emoji = getCreatureEmoji(elementType);
-    
     // 創建醒目的圖標HTML（增加尺寸和邊框，添加動畫和脈衝效果）
     const iconHtml = `
       <div style="
         width: 60px;
         height: 60px;
         border-radius: 50%;
-        background-color: ${bgColor};
-        border: 5px solid yellow;
+        background-color: #fff;
+        border: 5px solid ${bgColor};
         display: flex;
         justify-content: center;
         align-items: center;
         box-shadow: 0 0 20px rgba(255,255,0,0.8);
-        color: white;
-        font-weight: bold;
-        font-size: 30px;
         position: relative;
         z-index: 2000;
         animation: pulse 1.5s infinite;
+        overflow: hidden;
       ">
-        ${emoji}
+        <img src="${imageUrl}" alt="${name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'">
         <div style="
           position: absolute;
           bottom: -15px;
@@ -153,6 +149,7 @@ function displayCreaturesOnMap(creatures) {
         // 添加彈出框
       marker.bindPopup(`
         <div class="text-center py-2">
+          <img src="${imageUrl}" alt="${name}" style="width: 96px; height: 96px; object-fit: contain; margin-bottom: 8px;" onerror="this.src='/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'">
           <h5 class="mb-2">${name}</h5>
           <p class="mb-3">
             <strong>攻擊:</strong> ${attack} | 
@@ -314,8 +311,7 @@ function getCreatureEmoji(type) {
 
 // 獲取精靈默認圖片
 function getDefaultCreatureImage(type, name) {
-  const color = getTypeColor(type);
-  return `https://placehold.co/200x200/${color}/white?text=${encodeURIComponent(name || '未知精靈')}`;
+  return '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
 }
 
 // 根據精靈類型獲取顏色

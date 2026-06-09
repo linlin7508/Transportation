@@ -12,7 +12,7 @@
     <div class="col-lg-8 mb-4">
         <div class="card game-hero">
             <div class="card-body p-0 position-relative">
-                <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681c5c8d00308c6d7719/files/683fc1240003d7532939/view?project=681c5c6b002355634f3c&mode=admin" class="img-fluid w-100 rounded-3" alt="精靈公車世界">
+                <img src="{{ url_for('static', filename='img/Data/home.png') }}" class="img-fluid w-100 rounded-3" alt="精靈公車世界">
                 <div class="game-hero-overlay p-4 text-white">
                     <h1 class="display-4 game-title float-animation">歡迎來到精靈公車世界！</h1>
                     <p class="lead">在大眾運輸的旅程中，發現並收集各種奇妙的精靈，成為最強大的訓練師！</p>
@@ -62,7 +62,7 @@
     <div class="col-12">
         <h2 class="section-title text-center mb-4"><i class="fas fa-gamepad me-2"></i>遊戲特色</h2>
     </div>
-    <div class="col-md-4 mb-4">
+    <div class="col-md-6 col-lg-3 mb-4">
         <div class="card game-feature-card h-100">
             <div class="card-body text-center">
                 <div class="feature-icon mb-3 float-animation">
@@ -73,7 +73,7 @@
                 <a href="{{ url_for('game.catch') }}" class="btn btn-sm btn-outline-primary mt-3">開始捕捉</a>
             </div>
         </div>
-    </div>    <div class="col-md-4 mb-4">
+    </div>    <div class="col-md-6 col-lg-3 mb-4">
         <div class="card game-feature-card h-100">
             <div class="card-body text-center">
                 <div class="feature-icon mb-3 float-animation">
@@ -84,7 +84,7 @@
                 <a href="{{ url_for('friend_fight.choose_fight') }}" class="btn btn-sm btn-outline-warning mt-3">開始對戰</a>
             </div>
         </div>
-    </div>    <div class="col-md-4 mb-4">
+    </div>    <div class="col-md-6 col-lg-3 mb-4">
         <div class="card game-feature-card h-100">
             <div class="card-body text-center">
                 <div class="feature-icon mb-3 float-animation">
@@ -93,6 +93,18 @@
                 <h5 class="card-title">好友列表</h5>
                 <p class="card-text">你的好友都在這邊，快來看看他又完成了甚麼目標吧！</p>
                 <a href="{{ url_for('community.friends') }}" class="btn btn-sm btn-outline-success mt-3">查看好友</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card game-feature-card h-100">
+            <div class="card-body text-center">
+                <div class="feature-icon mb-3 float-animation">
+                    <i class="fas fa-comment-dots fa-3x text-info"></i>
+                </div>
+                <h5 class="card-title">陪伴精靈</h5>
+                <p class="card-text">政大小羅會記得你最近說過的話，陪你聊通勤、校園和今天的心情。</p>
+                <a href="{{ url_for('companion.index') }}" class="btn btn-sm btn-outline-info mt-3">開始聊天</a>
             </div>
         </div>
     </div>
@@ -116,7 +128,7 @@
                             </div>
                               <!-- 精靈圖片（不裁切、保留完整圖片） -->
                             <div class="text-center p-3 d-flex align-items-center justify-content-center" style="min-height: 260px;">
-                                <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681c5c8d00308c6d7719/files/681c63780029634ce388/view?project=681c5c6b002355634f3c&mode=admin"
+                                <img src="{{ url_for('static', filename='img/Data/鯊奇馬.png') }}"
                                      alt="水系精靈"
                                      class="img-fluid creature-img rounded"
                                      style="max-height: 220px; object-fit: contain;">
@@ -157,7 +169,7 @@
                             </div>
                               <!-- 精靈圖片（不裁切、保留完整圖片） -->
                             <div class="text-center p-3 d-flex align-items-center justify-content-center" style="min-height: 260px;">
-                                <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681c5c8d00308c6d7719/files/681c632000345e069128/view?project=681c5c6b002355634f3c&mode=admin"
+                                <img src="{{ url_for('static', filename='img/Data/狐焦炎.png') }}"
                                      alt="火系精靈"
                                      class="img-fluid creature-img rounded"
                                      style="max-height: 220px; object-fit: contain;">
@@ -198,7 +210,7 @@
                             </div>
                               <!-- 精靈圖片（不裁切、保留完整圖片） -->
                             <div class="text-center p-3 d-flex align-items-center justify-content-center" style="min-height: 260px;">
-                                <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681c5c8d00308c6d7719/files/681c636f00198e9782d2/view?project=681c5c6b002355634f3c&mode=admin"                                     alt="草系精靈"
+                                <img src="{{ url_for('static', filename='img/Data/精靈鐘.png') }}"                                     alt="草系精靈"
                                      class="img-fluid creature-img rounded"
                                      style="max-height: 220px; object-fit: contain;">
                             </div>
@@ -240,7 +252,7 @@
                             </div>
                               <!-- 精靈圖片（不裁切、保留完整圖片） -->
                             <div class="text-center p-3 d-flex align-items-center justify-content-center" style="min-height: 260px;">
-                                <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681c5c8d00308c6d7719/files/68390f030031f1f20a85/view?project=681c5c6b002355634f3c&mode=admin"
+                                <img src="{{ url_for('static', filename='img/Data/八星之主.png') }}"
                                      alt="光系精靈"
                                      class="img-fluid creature-img rounded"
                                      style="max-height: 220px; object-fit: contain;">
@@ -281,7 +293,7 @@
                             </div>
                               <!-- 精靈圖片（不裁切、保留完整圖片） -->
                             <div class="text-center p-3 d-flex align-items-center justify-content-center" style="min-height: 260px;">
-                                <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681c5c8d00308c6d7719/files/68390f3c001270e4def2/view?project=681c5c6b002355634f3c&mode=admin"
+                                <img src="{{ url_for('static', filename='img/Data/蒙昧.png') }}"
                                      alt="暗系精靈"
                                      class="img-fluid creature-img rounded"
                                      style="max-height: 220px; object-fit: contain;">
@@ -323,7 +335,7 @@
                             
                             <!-- 精靈圖片（不裁切、保留完整圖片） -->
                             <div class="text-center p-3 d-flex align-items-center justify-content-center" style="min-height: 260px;">
-                                <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681c5c8d00308c6d7719/files/683fdf5e0019b993c987/view?project=681c5c6b002355634f3c&mode=admin"
+                                <img src="{{ url_for('static', filename='img/Data/青鬼.png') }}"
                                      alt="一般系精靈"
                                      class="img-fluid creature-img rounded"
                                      style="max-height: 220px; object-fit: contain;">

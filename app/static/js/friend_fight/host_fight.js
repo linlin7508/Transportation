@@ -74,7 +74,7 @@ class HostFight {
         const div = document.createElement('div');
         div.className = 'col-md-4 col-sm-6 mb-3';        // 確保必要的字段存在
         const creatureName = creature.name || '未知精靈';
-        const creatureImageUrl = creature.image_url || '/static/img/creature.PNG';
+        const creatureImageUrl = creature.image_url || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
         const creatureElement = creature.element || creature.type || 'Normal';
         const creatureAttack = creature.attack || 100;
         const creatureHp = creature.hp || 1000;
@@ -82,7 +82,7 @@ class HostFight {
         div.innerHTML = `
             <div class="card creature-card h-100" onclick="hostFight.selectCreature('${creature.id}', '${creatureName}', '${creatureImageUrl}')">
                 <img src="${creatureImageUrl}" class="card-img-top" alt="${creatureName}" style="height: 150px; object-fit: cover;" 
-                     onerror="this.src='/static/img/creature.PNG'">
+                     onerror="this.src='/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'">
                 <div class="card-body text-center">
                     <h6 class="card-title">${creatureName}</h6>
                     <span class="badge bg-${this.getElementColor(creatureElement)}">${creatureElement}</span>

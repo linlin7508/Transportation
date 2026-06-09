@@ -4,9 +4,19 @@
  */
 
 // 全局地圖變數 - 確保在 window 物件上也有備份
-let gameMap = null;
-window.gameMap = null;
-window.busMap = null;
+let gameMap = window.gameMap || window.busMap || null;
+window.gameMap = window.gameMap || gameMap;
+window.busMap = window.busMap || gameMap;
+
+function createLocationError(message, code) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+function isSecureGeolocationContext() {
+  return window.isSecureContext || ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
 
 // 初始化地圖的函數
 function initializeMap(containerId = 'map') {
@@ -66,7 +76,7 @@ function createDirectMap(containerId = 'map') {
         // 重置樣式
         container.style.cssText = '';
         container.style.width = '100%';
-        container.style.height = '100vh';
+        container.style.height = containerId === 'map' ? '500px' : '100vh';
         container.style.minHeight = '400px';
         container.style.position = 'relative';
         
@@ -118,7 +128,7 @@ function createDirectMap(containerId = 'map') {
       if (rect.width === 0 || rect.height === 0) {
         console.warn('地圖容器尺寸為0，設置預設尺寸');
         mapContainer.style.width = '100%';
-        mapContainer.style.height = '100vh';
+        mapContainer.style.height = containerId === 'map' ? '500px' : '100vh';
         mapContainer.style.minHeight = '400px';
       }
       
@@ -373,16 +383,28 @@ function updateUserLocation() {
     // 檢查地圖實例
     const targetMap = window.gameMap || window.busMap;
     if (!targetMap) {
-      const error = '地圖尚未初始化';
-      console.error(error);
+      const error = createLocationError('地圖尚未初始化，請稍後再試', 'MAP_NOT_READY');
+      console.error(error.message);
+      reject(error);
+      return;
+    }
+
+    if (!isSecureGeolocationContext()) {
+      const error = createLocationError(
+        '目前網址不是 HTTPS 或 localhost，瀏覽器不會跳出定位授權視窗',
+        'INSECURE_CONTEXT'
+      );
+      console.error(error.message, window.location.href);
+      addDefaultLocationMarker();
+      showGameAlert('請用 http://localhost:3001 或 HTTPS 開啟，瀏覽器才會允許定位', 'warning');
       reject(error);
       return;
     }
     
     // 檢查地理位置API是否可用
     if (!navigator.geolocation) {
-      const error = '您的瀏覽器不支持地理位置功能';
-      console.error(error);
+      const error = createLocationError('您的瀏覽器不支持地理位置功能', 'UNSUPPORTED');
+      console.error(error.message);
       reject(error);
       return;
     }
@@ -393,9 +415,12 @@ function updateUserLocation() {
         console.log('位置權限狀態:', permissionStatus.state);
         
         if (permissionStatus.state === 'denied') {
-          const error = '位置權限被拒絕，請在瀏覽器設置中允許位置訪問';
-          console.error(error);
-          showGameAlert('位置權限被拒絕，請允許位置訪問後重試', 'warning');
+          const error = createLocationError(
+            '位置權限已被拒絕，瀏覽器不會再次跳出授權視窗；請到網址列旁的網站設定重新允許定位',
+            'PERMISSION_DENIED'
+          );
+          console.error(error.message);
+          showGameAlert('定位權限已被拒絕，請到網站設定重新允許定位', 'warning');
           reject(error);
           return;
         }
@@ -432,7 +457,7 @@ function performLocationRequest(targetMap, resolve, reject) {
       // 檢查 position 和 coords 是否存在
       if (!position || !position.coords) {
         console.error('位置數據格式錯誤:', position);
-        reject('位置數據格式錯誤');
+        reject(createLocationError('位置數據格式錯誤', 'INVALID_POSITION'));
         return;
       }
       
@@ -443,7 +468,7 @@ function performLocationRequest(targetMap, resolve, reject) {
       // 檢查座標值是否有效
       if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
         console.error('無效的座標值:', { lat, lng });
-        reject('獲取到無效的座標值');
+        reject(createLocationError('獲取到無效的座標值', 'INVALID_POSITION'));
         return;
       }
       
@@ -519,18 +544,22 @@ function performLocationRequest(targetMap, resolve, reject) {
       console.error('地理位置獲取失敗:', error);
       
       let errorMessage = '無法獲取您的位置';
+      let errorCode = 'UNKNOWN';
       
       switch(error.code) {
-        case error.PERMISSION_DENIED:
-          errorMessage = '位置權限被拒絕，請在瀏覽器設置中允許位置訪問';
-          showGameAlert('請允許瀏覽器訪問您的位置', 'warning');
+        case 1:
+          errorMessage = '位置權限已被拒絕，瀏覽器不會再次跳出授權視窗；請到網址列旁的網站設定重新允許定位';
+          errorCode = 'PERMISSION_DENIED';
+          showGameAlert('定位權限已被拒絕，請到網站設定重新允許定位', 'warning');
           break;
-        case error.POSITION_UNAVAILABLE:
+        case 2:
           errorMessage = '位置信息不可用，請檢查GPS或網絡連接';
+          errorCode = 'POSITION_UNAVAILABLE';
           showGameAlert('無法獲取位置信息，請檢查GPS設置', 'warning');
           break;
-        case error.TIMEOUT:
+        case 3:
           errorMessage = '位置獲取超時，請重試';
+          errorCode = 'TIMEOUT';
           showGameAlert('定位超時，請重試', 'warning');
           break;
         default:
@@ -545,7 +574,7 @@ function performLocationRequest(targetMap, resolve, reject) {
       addDefaultLocationMarker();
       showGameAlert('使用預設位置（台北市中心）', 'info');
       
-      reject(new Error(errorMessage));
+      reject(createLocationError(errorMessage, errorCode));
     },
     // 選項
     positionOptions

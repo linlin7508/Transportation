@@ -8,13 +8,31 @@ const DEFAULT_POSITION = [25.0330, 121.5654];
 // 全局位置變數，供其他模組使用
 let userLocation = null;
 
+function createLocationError(message, code) {
+    const error = new Error(message);
+    error.code = code;
+    return error;
+}
+
+function isSecureGeolocationContext() {
+    return window.isSecureContext || ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
+
 // 更新用戶位置 - 返回 Promise 以支持異步處理
 function updateUserLocation() {
     return new Promise((resolve, reject) => {
         // 檢查地圖實例
         if (!window.busMap) {
             console.warn('地圖實例不存在，無法更新位置');
-            reject(new Error('地圖實例不存在'));
+            reject(createLocationError('地圖尚未初始化，請稍後再試', 'MAP_NOT_READY'));
+            return;
+        }
+
+        if (!isSecureGeolocationContext()) {
+            const message = '瀏覽器只會在 HTTPS 或 localhost 網址顯示定位授權視窗';
+            console.warn(message, window.location.href);
+            useDefaultLocation(message);
+            reject(createLocationError(message, 'INSECURE_CONTEXT'));
             return;
         }
 
@@ -22,7 +40,7 @@ function updateUserLocation() {
         if (!navigator.geolocation) {
             console.warn('瀏覽器不支持地理定位');
             useDefaultLocation('瀏覽器不支持地理定位');
-            reject(new Error('瀏覽器不支持地理定位'));
+            reject(createLocationError('瀏覽器不支持地理定位', 'UNSUPPORTED'));
             return;
         }
 
@@ -91,15 +109,19 @@ function updateUserLocation() {
             (error) => {
                 // 位置錯誤處理
                 let errorMsg = '';
+                let errorCode = 'UNKNOWN';
                 switch(error.code) {
                     case error.PERMISSION_DENIED:
-                        errorMsg = '您已拒絕位置訪問權限';
+                        errorMsg = '位置權限已被拒絕，瀏覽器不會再次跳出授權視窗；請到網址列旁的網站設定重新允許定位';
+                        errorCode = 'PERMISSION_DENIED';
                         break;
                     case error.POSITION_UNAVAILABLE:
                         errorMsg = '位置信息不可用';
+                        errorCode = 'POSITION_UNAVAILABLE';
                         break;
                     case error.TIMEOUT:
                         errorMsg = '位置請求超時';
+                        errorCode = 'TIMEOUT';
                         break;
                     default:
                         errorMsg = '獲取位置時發生未知錯誤';
@@ -107,7 +129,7 @@ function updateUserLocation() {
                 
                 console.warn('定位錯誤:', errorMsg, error);
                 useDefaultLocation(errorMsg);
-                reject(new Error(errorMsg));
+                reject(createLocationError(errorMsg, errorCode));
             },
             positionOptions
         );

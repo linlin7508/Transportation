@@ -617,6 +617,51 @@ def fetch_all_data():
     
     return results
 
+def fetch_tdx_stops_for_db():
+    """
+    從 TDX 直接抓取站點資料，不經過 JSON 快取，直接處理並轉為 Arena Model 寫入 DB
+    """
+    from app.services.arena_builder import ingest_grouped_stops_to_db
+    token = get_tdx_token()
+    if not token:
+        logger.error("無法獲取 TDX Token")
+        return False
+        
+    routes_to_fetch = {
+        "貓空右線": f"{TDX_API_URL}/V3/Map/Bus/Network/StopOfRoute/City/Taipei/RouteName/貓空右線?$format=GEOJSON",
+        "貓空左線(動物園)": f"{TDX_API_URL}/V3/Map/Bus/Network/StopOfRoute/City/Taipei/RouteName/貓空左線(動物園)?$format=GEOJSON",
+        "貓空左線(指南宮)": f"{TDX_API_URL}/V3/Map/Bus/Network/StopOfRoute/City/Taipei/RouteName/貓空左線(指南宮)?$format=GEOJSON",
+        "棕3": f"{TDX_API_URL}/V3/Map/Bus/Network/StopOfRoute/City/Taipei/RouteName/%E6%A3%953?$format=GEOJSON"
+    }
+    
+    grouped_stops = {}
+    
+    for route_name, url in routes_to_fetch.items():
+        logger.info(f"開始直接獲取 {route_name} 的站點資料寫入DB")
+        data = make_tdx_request(url, token)
+        stops = process_geojson_data(data, "stops")
+        for stop in stops:
+            stop_name = stop.get("StopName", {}).get("Zh_tw", "未知")
+            lat = stop.get("StopPosition", {}).get("PositionLat")
+            lon = stop.get("StopPosition", {}).get("PositionLon")
+            if not lat or not lon:
+                continue
+                
+            if stop_name not in grouped_stops:
+                grouped_stops[stop_name] = {
+                    "lat": lat,
+                    "lon": lon,
+                    "routes": [route_name]
+                }
+            else:
+                if route_name not in grouped_stops[stop_name]["routes"]:
+                    grouped_stops[stop_name]["routes"].append(route_name)
+                    
+    logger.info(f"成功整理了 {len(grouped_stops)} 個站點，準備寫入 PostgreSQL (UPSERT)...")
+    ingest_grouped_stops_to_db(grouped_stops)
+    logger.info("TDX 站點資料寫入 Database 完成！")
+    return True
+
 def get_cat_right_route():
     """
     獲取貓空右線的路線資料

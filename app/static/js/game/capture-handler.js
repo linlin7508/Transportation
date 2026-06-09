@@ -17,9 +17,10 @@ window.CaptureHandler = (function() {
     
     try {
       // 檢查 Firebase 是否已經初始化
-      if (!firebase || !firebase.firestore || !firebase.auth) {
-        console.error('Firebase 未初始化或未載入必要服務');
-        return false;
+      if (typeof firebase === 'undefined' || !firebase.firestore || !firebase.auth) {
+        console.warn('Firebase 未初始化，改用後端 Session 捕捉流程');
+        initialized = true;
+        return true;
       }
       
       db = firebase.firestore();
@@ -161,7 +162,7 @@ window.CaptureHandler = (function() {
   }
   
   // 捕捉精靈的主要函數
-  async function captureCreature(creatureId) {
+  async function captureCreature(creatureId, options = {}) {
     try {
       // 檢查用戶是否已登入
       const user = await checkUserLoggedIn();
@@ -184,7 +185,10 @@ window.CaptureHandler = (function() {
             'X-CSRF-Token': getCSRFToken() || ''
           },
           credentials: 'same-origin',
-          body: JSON.stringify({ creatureId: creatureId })
+          body: JSON.stringify({
+            creatureId: creatureId,
+            circleType: options.circleType || 'premium'
+          })
         })
         .then(response => {
           if (!response.ok) {

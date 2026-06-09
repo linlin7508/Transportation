@@ -489,10 +489,79 @@ body.dark-theme {
 
 .result-message.failure {
   color: #e74c3c;
+  animation: failureTextPulse 0.7s ease-in-out 2;
 }
 
 .creature-image.captured {
   animation: capture-animation 1s forwards;
+}
+
+.creature-image.capture-failed {
+  animation: creatureCaptureFailed 0.8s ease-in-out;
+}
+
+.magic-circle.capture-failed,
+.magic-circle-inner.capture-failed {
+  animation: magicCircleBreak 0.8s ease-in-out forwards;
+  filter: hue-rotate(135deg) saturate(1.8) brightness(0.9);
+}
+
+.capture-effect.capture-failed {
+  width: 320px;
+  height: 320px;
+  opacity: 1;
+  background: radial-gradient(circle, rgba(231, 76, 60, 0.55) 0%, rgba(231, 76, 60, 0.18) 45%, rgba(231, 76, 60, 0) 72%);
+  animation: failureShockwave 0.75s ease-out forwards;
+}
+
+.failure-shard {
+  position: absolute;
+  width: 9px;
+  height: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(231,76,60,0.85));
+  border-radius: 2px;
+  opacity: 0;
+  z-index: 29;
+  pointer-events: none;
+  box-shadow: 0 0 12px rgba(231, 76, 60, 0.8);
+  animation: failureShardBurst 0.9s ease-out forwards;
+}
+
+@keyframes creatureCaptureFailed {
+  0%, 100% { transform: translateX(0) scale(1); filter: none; }
+  15% { transform: translateX(-16px) rotate(-4deg) scale(1.04); filter: drop-shadow(0 0 14px rgba(231, 76, 60, 0.9)); }
+  30% { transform: translateX(14px) rotate(4deg) scale(1.02); }
+  45% { transform: translateX(-11px) rotate(-3deg) scale(1.01); }
+  60% { transform: translateX(8px) rotate(2deg) scale(1); }
+}
+
+@keyframes magicCircleBreak {
+  0% { opacity: 0.9; transform: scale(1) rotate(0deg); }
+  40% { opacity: 1; transform: scale(1.08) rotate(12deg); }
+  100% { opacity: 0.18; transform: scale(0.78) rotate(-24deg); }
+}
+
+@keyframes failureShockwave {
+  0% { transform: scale(0.4); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+@keyframes failureShardBurst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scale(0.4);
+  }
+  20% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--distance) * -1)) scale(0.9);
+  }
+}
+
+@keyframes failureTextPulse {
+  0%, 100% { transform: scale(1); text-shadow: 0 0 12px rgba(231, 76, 60, 0.8); }
+  50% { transform: scale(1.08); text-shadow: 0 0 24px rgba(231, 76, 60, 1); }
 }
 
 /* 魔法粒子樣式 */

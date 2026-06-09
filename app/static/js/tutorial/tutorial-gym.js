@@ -147,7 +147,7 @@ const tutorialGym = {    // 顯示道館選擇界面
                     const defaultCreature = tutorialConfig.defaultCreature || {
                         id: 'starter_creature',
                         name: '初始精靈',
-                        image: '/static/images/creatures/default.png',
+                        image: '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png',
                         type: 'normal',
                         power: 50
                     };

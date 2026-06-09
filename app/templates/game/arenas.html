@@ -33,7 +33,7 @@
                                                     <div class="mt-2">
                                                         <div class="defender-info d-flex align-items-center">
                                                             <div class="defender-img me-3">
-                                                                <img src="{{ arena.owner_creature.image_url or 'https://placehold.co/80?text=精靈' }}" 
+                                                                <img src="{{ arena.owner_creature.image_url or url_for('static', filename='img/Data/虛弱兔.png') }}" 
                                                                     alt="{{ arena.owner_creature.name }}" class="img-fluid rounded" style="max-width: 80px;">
                                                             </div>
                                                             <div class="defender-stats">
@@ -62,7 +62,7 @@
                         </div>
                     {% else %}
                         <div class="text-center py-5">
-                            <img src="https://cdn-icons-png.flaticon.com/512/4076/4076478.png" alt="尚無擂台" style="max-width: 100px; opacity: 0.5;" class="mb-3">
+                            <img src="{{ url_for('static', filename='img/Data/home.png') }}" alt="尚無擂台" style="max-width: 100px; opacity: 0.5;" class="mb-3">
                             <p class="text-muted">目前沒有任何可挑戰的擂台</p>
                         </div>
                     {% endif %}

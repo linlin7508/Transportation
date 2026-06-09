@@ -15,9 +15,9 @@
     <!-- 玩家資料卡 -->
     <div class="col-md-4 mb-4">
     <div class="card profile-card shadow-lg">
-        <div class="profile-banner" style="background-image: url('https://img.freepik.com/free-vector/gradient-mountain-landscape_23-2149162007.jpg?w=740&t=st=1711400000~exp=1711400600~hmac=0d7b12bc87e46f2ce2b8c5b2400c5fb8d0f9dab991a753e4a3cb3324354a7c47');">
+        <div class="profile-banner" style="background-image: url('{{ url_for('static', filename='img/Data/home.png') }}');">
             <div class="profile-avatar-wrapper">
-                <img src="{{ url_for('static', filename='img/avatar-default.png') }}" alt="玩家頭像" class="profile-avatar" id="user-avatar">
+                <img src="{{ url_for('static', filename='img/Data/people.png') }}" alt="玩家頭像" class="profile-avatar" id="user-avatar">
                 <div class="level-badge">
                     <span id="user-level">1</span>
                 </div>

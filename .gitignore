@@ -4,18 +4,6 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-firebase-debug.log*
-firebase-debug.*.log*
-
-# Firebase cache
-.firebase/
-
-# Firebase config
-
-# Uncomment this if you'd like others to create their own Firebase project.
-# For a team working on the same Firebase project(s), it is recommended to leave
-# it commented so all members can deploy to the same project(s) in .firebaserc.
-# .firebaserc
 
 # Runtime data
 pids
@@ -65,9 +53,6 @@ node_modules/
 # dotenv environment variables file
 .env
 
-# dataconnect generated files
-.dataconnect
-
 # 專案敏感資訊
 # 避免金鑰和認證資訊外洩
 /credentials/*
@@ -75,7 +60,6 @@ node_modules/
 *.key
 *.cert
 *.json.secret
-app/config/firebase_config.py
 
 # 環境變數和本地配置
 .env
@@ -85,14 +69,6 @@ app/config/firebase_config.py
 instance/
 config.py
 local_settings.py
-
-# Firebase 本地開發檔案
-firebase-debug.log
-ui-debug.log
-.firebaserc
-.runtimeconfig.json
-*-debug.log
-.firebase/*.cache
 
 # Python 相關
 __pycache__/
@@ -169,15 +145,7 @@ package-lock.json
 .vercel
 .netlify
 
-# Firebase 相關
-.firebase/
-firebase-debug.log
-firebase-debug.*.log*
-.firebaserc
-.runtimeconfig.json
-*-debug.log
-.firebase/*.cache
-.dataconnect
+# Dataconnect / generated files
 dataconnect-generated/
 
 # 快取檔案
@@ -192,3 +160,6 @@ old_ver_backup/
 # 本地資料文件
 # 允許追蹤本地資料目錄結構，但不追蹤具體資料檔案
 # app/data/*/*.json
+.venv
+flask_session/
+

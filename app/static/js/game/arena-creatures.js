@@ -99,7 +99,7 @@ function renderCreatureSelectionList(creatures) {
     if (creatures.length === 0) {
         creatureList.innerHTML = `
             <div class="col-12 text-center py-4">
-                <img src="https://cdn-icons-png.flaticon.com/512/4698/4698906.png" alt="尚無精靈" style="max-width: 100px; opacity: 0.5;" class="mb-3">
+                <img src="/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png" alt="尚無精靈" style="max-width: 100px; opacity: 0.5;" class="mb-3">
                 <p class="text-muted">您還沒有捕捉到任何精靈。</p>
                 <a href="/game/catch" class="btn btn-primary mt-2">
                     <i class="fas fa-search me-1"></i>開始捕捉精靈
@@ -117,7 +117,7 @@ function renderCreatureSelectionList(creatures) {
         creatureCard.innerHTML = `
             <div class="card creature-selection-card h-100" data-creature-id="${creature.id}" data-creature-type="${creature.element_type?.toLowerCase() || creature.type?.toLowerCase()}">
                 <div class="creature-image">
-                    <img src="${creature.image_url || 'https://placehold.co/150?text=' + encodeURIComponent(creature.name)}" 
+                    <img src="${creature.image_url || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'}" 
                          alt="${creature.name}" class="img-fluid">
                 </div>
                 <div class="card-body text-center p-2">

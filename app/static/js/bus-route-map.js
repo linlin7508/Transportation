@@ -130,6 +130,10 @@ function initApp(mapContainerId = 'map') {
                         // 如果地圖存在且瓦片已載入或已檢查超過10次則繼續
                         clearInterval(checkMapInit);
                         console.log('地圖初始化完成或已達到最低檢查次數，繼續初始化應用');
+                        window.gameMap = window.busMap;
+                        window.dispatchEvent(new CustomEvent('busMapReady', {
+                            detail: { map: window.busMap, source: 'bus-route-map' }
+                        }));
                         
                         // 強制設置瓦片載入狀態為完成
                         window.tilesLoaded = true;
@@ -269,6 +273,7 @@ function tryCreateEmergencyMap(mapContainerId = 'map') {
         }
         
         // 創建必要的圖層
+        window.gameMap = window.busMap;
         window.routeLayer = L.layerGroup().addTo(window.busMap);
         window.stopsLayer = L.layerGroup().addTo(window.busMap);
         window.busesLayer = L.layerGroup().addTo(window.busMap);
@@ -276,6 +281,9 @@ function tryCreateEmergencyMap(mapContainerId = 'map') {
         window.arenaLayer = L.layerGroup().addTo(window.busMap);
         
         console.log('緊急備用地圖創建成功');
+        window.dispatchEvent(new CustomEvent('busMapReady', {
+            detail: { map: window.busMap, source: 'emergency-map' }
+        }));
         
         // 載入基本數據
         try {

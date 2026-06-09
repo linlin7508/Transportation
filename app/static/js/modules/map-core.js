@@ -164,45 +164,10 @@ function initMap(elementId, center = [25.0165, 121.5375], zoom = 14) {
     // 顯示載入狀態
     const loadingIndicator = showLoadingState(elementId, '正在初始化地圖...');
     
-    // 檢查網絡連接和本地資源 (只在啟動時檢查一次)
-    if (!networkChecked) {
-        // 首先檢查網絡連接
-        checkNetworkConnection()
-            .then(() => {
-                console.log('網絡連接正常，檢查本地資源...');
-                // 然後檢查本地資源
-                return checkLocalResources();
-            })
-            .then(() => {
-                console.log('所有檢查都通過，繼續初始化地圖');
-                networkChecked = true;
-                // 一切就緒，繼續初始化地圖
-                return continueInitMap();
-            })
-            .catch(err => {
-                console.error('初始化前檢查失敗:', err);
-                removeLoadingState(elementId, loadingIndicator);
-                
-                let errorMessage = '地圖初始化失敗：';
-                if (err.message.includes('網絡')) {
-                    errorMessage += '無法連接到地圖服務。請檢查您的網絡連接並刷新頁面重試。';
-                } else if (err.message.includes('路線資料')) {
-                    errorMessage += '無法載入地圖資料。請確認服務器狀態並刷新頁面重試。';
-                } else {
-                    errorMessage += `${err.message}，請檢查網絡連接並刷新頁面重試。`;
-                }
-                
-                if (typeof showErrorMessage === 'function') {
-                    showErrorMessage(errorMessage, true);
-                } else {
-                    alert(errorMessage);
-                }
-                return null;
-            });
-    } else {
-        // 已經檢查過網絡和資源，直接初始化
-        continueInitMap();
-    }
+    // 先建立地圖，不要讓外部瓦片網路檢查阻擋 Leaflet 容器初始化。
+    // 路線資料與瓦片錯誤會由後續載入流程各自處理。
+    networkChecked = true;
+    continueInitMap();
     
     // 地圖初始化函數由可能返回完成的地圖實例或 null
     return mapInstance;
@@ -435,6 +400,7 @@ function initMap(elementId, center = [25.0165, 121.5375], zoom = 14) {
             
             // 全局引用
             window.busMap = mapInstance;
+            window.gameMap = mapInstance;
             
             // 如果有定位權限，獲取用戶位置（加入錯誤處理）
             if (navigator.geolocation) {
@@ -463,6 +429,9 @@ function initMap(elementId, center = [25.0165, 121.5375], zoom = 14) {
                 
                 // 移除載入狀態
                 removeLoadingState(elementId, loadingIndicator);
+                window.dispatchEvent(new CustomEvent('busMapReady', {
+                    detail: { map: mapInstance, source: 'map-core' }
+                }));
             }, 1000); // 增加延遲以確保DOM已完全渲染
             
             // 註冊視窗大小變更事件（只註冊一次）
@@ -484,6 +453,9 @@ function initMap(elementId, center = [25.0165, 121.5375], zoom = 14) {
             mapInstance.on('load', function() {
                 console.log('地圖完全載入');
                 removeLoadingState(elementId, loadingIndicator);
+                window.dispatchEvent(new CustomEvent('busMapReady', {
+                    detail: { map: mapInstance, source: 'leaflet-load' }
+                }));
             });
             
             console.log('地圖初始化完成');

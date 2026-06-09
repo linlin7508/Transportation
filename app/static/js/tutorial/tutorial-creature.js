@@ -90,7 +90,7 @@ const tutorialCreature = {
         const defaultCreature = tutorialConfig.defaultCreature;
         
         // 填充精靈選擇界面
-        document.getElementById('starterCreatureImg').src = defaultCreature.image || "/static/img/default-creature.png";
+        document.getElementById('starterCreatureImg').src = defaultCreature.image || "/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png";
         document.getElementById('starterCreatureName').textContent = defaultCreature.name;
         
         const typeElement = document.getElementById('starterCreatureType');

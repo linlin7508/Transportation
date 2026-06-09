@@ -99,9 +99,16 @@ async function loadMagicCircles() {
     // 清空現有內容
     grid.innerHTML = '';
     
+    const apiMagicCircles = Array.isArray(data.magic_circles)
+      ? data.magic_circles
+      : Object.entries(data.magic_circles || {}).map(([key, value]) => ({
+          key,
+          count: typeof value === 'number' ? value : (value?.count || 0)
+        }));
+
     // 合併API數據與靜態數據
     const combinedData = magicCircleData.map(staticItem => {
-      const apiItem = data.magic_circles.find(api => api.key === staticItem.key);
+      const apiItem = apiMagicCircles.find(api => api.key === staticItem.key);
       return {
         ...staticItem,
         quantity: apiItem ? apiItem.count : 0

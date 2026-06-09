@@ -1,12 +1,22 @@
 // 模組：arena-manager.js - 道館管理
 
-import { arenaLayer, uniqueStops } from './config.js';
+import { arenaLayer as defaultArenaLayer, uniqueStops } from './config.js';
 
 // 緩存道館等級資料
 let cachedArenaLevels = {};
 
 // 全局存儲所有道館標記的對象
 window.arenaMarkers = window.arenaMarkers || {};
+let arenaRenderRetryTimer = null;
+
+function getArenaLayer() {
+    if (window.arenaLayer && typeof window.arenaLayer.addTo === 'function') {
+        return window.arenaLayer;
+    }
+
+    window.arenaLayer = defaultArenaLayer;
+    return defaultArenaLayer;
+}
 
 // 從伺服器獲取緩存的道館等級資料
 function loadCachedArenaLevels() {
@@ -37,31 +47,35 @@ function loadCachedArenaLevels() {
 // 渲染所有道館 - 新功能：從緩存中載入所有道館並渲染到地圖
 function renderAllArenas() {
     console.log('開始渲染所有緩存的道館...');
-    
-    // 清除現有道館圖層
-    arenaLayer.clearLayers();
-    
-    // 清除已存在的道館標記
-    window.arenaMarkers = {};
-    
-    // 清除已有記錄
-    for (let key in uniqueStops) {
-        delete uniqueStops[key];
+
+    const activeArenaLayer = getArenaLayer();
+    const activeMap = window.busMap || window.gameMap;
+    if (activeMap && (!activeArenaLayer._map || activeArenaLayer._map !== activeMap)) {
+        activeArenaLayer.addTo(activeMap);
     }
     
     // 從本地JSON文件獲取緩存的道館資料
     loadCachedArenaLevels()
         .then(arenas => {
             if (!arenas || Object.keys(arenas).length === 0) {
-                console.warn('沒有找到任何緩存道館資料');
+                console.warn('沒有找到任何緩存道館資料，保留既有道館標記');
                 return;
             }
             
             console.log(`準備渲染 ${Object.keys(arenas).length} 個道館`);
+
+            // 確認有資料後才清空舊道館，避免 API 短暫失敗時讓地圖道館消失。
+            activeArenaLayer.clearLayers();
+            window.arenaMarkers = {};
+            for (let key in uniqueStops) {
+                delete uniqueStops[key];
+            }
             
             // 避免重複，使用已處理的道館ID集合
             const processedArenaIds = new Set();
             
+            let renderedCount = 0;
+
             // 逐個繪製道館
             Object.values(arenas).forEach(arena => {
                 // 確保該道館還沒被處理過
@@ -83,7 +97,8 @@ function renderAllArenas() {
                     const routeName = arena.routes && arena.routes.length > 0 ? arena.routes[0] : '未知路線';
                     
                     // 創建道館標記 - 使用正確的等級
-                    createArenaMarker(stop, routeName, arena.id, arena.level || 1, arena);
+                    const marker = createArenaMarker(stop, routeName, arena.id, arena.level || 1, arena);
+                    if (marker) renderedCount++;
                     
                     // 記錄該位置已創建道館
                     const positionKey = `${arena.position[0].toFixed(4)},${arena.position[1].toFixed(4)}`;
@@ -94,12 +109,36 @@ function renderAllArenas() {
                 }
             });
             
-            console.log(`✅ 成功渲染 ${processedArenaIds.size} 個道館，跳過 ${Object.keys(arenas).length - processedArenaIds.size} 個重複道館`);
+            window.__arenaRenderDebug = {
+                total: Object.keys(arenas).length,
+                processed: processedArenaIds.size,
+                rendered: renderedCount,
+                layerCount: typeof activeArenaLayer.getLayers === 'function' ? activeArenaLayer.getLayers().length : null,
+            };
+            console.log(`✅ 成功渲染 ${renderedCount} 個道館，處理 ${processedArenaIds.size} 個，跳過 ${Object.keys(arenas).length - processedArenaIds.size} 個重複道館`);
         })
         .catch(error => {
             console.error('渲染道館時出錯:', error);
         });
 }
+
+function scheduleArenaRenderRetry() {
+    if (arenaRenderRetryTimer) {
+        clearTimeout(arenaRenderRetryTimer);
+    }
+
+    arenaRenderRetryTimer = setTimeout(() => {
+        const debug = window.__arenaRenderDebug;
+        const layer = getArenaLayer();
+        const layerCount = typeof layer.getLayers === 'function' ? layer.getLayers().length : 0;
+        if (!debug || !debug.rendered || layerCount === 0) {
+            console.log('道館尚未顯示，重新嘗試渲染道館...');
+            renderAllArenas();
+        }
+    }, 2500);
+}
+
+window.addEventListener('busMapReady', scheduleArenaRenderRetry);
 
 // 創建道館
 function createArena(stop, color, routeName, isBackup = false) {
@@ -216,7 +255,7 @@ function createArenaMarker(stop, routeName, arenaId, level, arenaData) {
     const arenaMarker = L.marker(stop.position, {
         icon: arenaIcon,
         zIndexOffset: 1000 // 確保道館顯示在站點上方
-    }).addTo(arenaLayer);
+    }).addTo(getArenaLayer());
     
     // 將道館信息存入全局對象
     if (!window.busStopsArenas) {

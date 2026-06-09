@@ -1306,8 +1306,7 @@ function setArenaBackground(level) {
   if (arenaHeader) {
     arenaHeader.style.backgroundColor = bgColor;
     // 設置道館等級背景圖
-    const backgroundImage = `https://placehold.co/1200x300/${bgColor.replace('#', '')}/ffffff?text=等級 ${level} 道館`;
-    arenaHeader.style.backgroundImage = `url('${backgroundImage}')`;
+    arenaHeader.style.backgroundImage = "url('/static/img/Data/home.png')";
   }
   
   if (battleWrapper) {
@@ -1400,7 +1399,7 @@ function renderCreatureList(creatures) {
     creatureCard.innerHTML = `
       <div class="creature-card" data-creature-id="${creature.id}">
         <div class="creature-image">
-          <img src="${creature.image_url || '/static/img/creature.PNG'}" alt="${creature.name}">
+          <img src="${creature.image_url || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'}" alt="${creature.name}">
         </div>
         <div class="creature-card-body">
           <div class="card-title">${creature.name}</div>
@@ -1488,7 +1487,7 @@ function updateArenaDisplay(arena) {
             <h5 class="mb-0">守護精靈</h5>
           </div>
           <div class="guardian-img-container">
-            <img class="guardian-img" src="${creature.image_url || creature.img || '/static/img/creature.PNG'}" alt="${creature.name}">
+            <img class="guardian-img" src="${creature.image_url || creature.img || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png'}" alt="${creature.name}">
           </div>
           <div class="guardian-stats">
             <h5 class="mb-3 text-center">${creature.name}</h5>
@@ -1626,7 +1625,7 @@ function occupyArena() {
       arenaData = data.arena;
       updateArenaDisplay(data.arena);
     } else {
-      alert('佔領失敗: ' + data.message);
+      alert('佔領失敗: ' + (data.message || data.error || '未知錯誤'));
     }
   })
   .catch(error => {
@@ -1669,7 +1668,7 @@ function battleArena() {
         }
       });
     } else {
-      alert('挑戰失敗: ' + data.message);
+      alert('挑戰失敗: ' + (data.message || data.error || '未知錯誤'));
     }
   })
   .catch(error => {
@@ -1707,7 +1706,7 @@ function collectRewards() {
       // 重新載入道館資料以更新獎勵狀態
       fetchArenaById(arenaData.id);
     } else {
-      alert('領取獎勵失敗: ' + data.message);
+      alert('領取獎勵失敗: ' + (data.message || data.error || '未知錯誤'));
     }
   })
   .catch(error => {
@@ -1728,12 +1727,12 @@ function playBattleAnimation(isWin, challenger, defender, callback) {
   const battleFlash = document.getElementById('battleFlash');
   
   // 設置精靈圖片
-  challengerImg.src = challenger.image_url || '/static/img/creature.PNG';
+  challengerImg.src = challenger.image_url || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
   
   if (defender) {
-    defenderImg.src = defender.image_url || defender.img || '/static/img/creature.PNG';
+    defenderImg.src = defender.image_url || defender.img || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
   } else {
-    defenderImg.src = '/static/img/creature.PNG';
+    defenderImg.src = '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
   }
   
   // 重置所有動畫元素
@@ -1792,7 +1791,7 @@ function showBattleResult(isWin, message, challenger, arena) {
   const challengerName = document.getElementById('challengerName');
   const challengerPower = document.getElementById('challengerPower');
   
-  if (challengerImg) challengerImg.src = challenger.image_url || '/static/img/creature.PNG';
+  if (challengerImg) challengerImg.src = challenger.image_url || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
   if (challengerName) challengerName.textContent = challenger.name;
   if (challengerPower) challengerPower.textContent = `ATK: ${challenger.attack || challenger.power || 100} | HP: ${challenger.hp || (challenger.power || 100) * 10}`;
   
@@ -1804,12 +1803,12 @@ function showBattleResult(isWin, message, challenger, arena) {
   
   if (arena.owner_creature) {
     const defender = arena.owner_creature;
-    if (defenderImg) defenderImg.src = defender.image_url || defender.img || '/static/img/creature.PNG';
+    if (defenderImg) defenderImg.src = defender.image_url || defender.img || '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
     if (defenderName) defenderName.textContent = defender.name;
     if (defenderPower) defenderPower.textContent = `ATK: ${defender.attack || defender.power || 100} | HP: ${defender.hp || (defender.power || 100) * 10}`;
     if (defenderOwner) defenderOwner.textContent = '擁有者: ' + arena.owner;
   } else {
-    if (defenderImg) defenderImg.src = '/static/img/creature.PNG';
+    if (defenderImg) defenderImg.src = '/static/img/Data/%E8%99%9B%E5%BC%B1%E5%85%94.png';
     if (defenderName) defenderName.textContent = '無守護者';
     if (defenderPower) defenderPower.textContent = 'ATK: 0 | HP: 0';
     if (defenderOwner) defenderOwner.textContent = '擁有者: 無';
