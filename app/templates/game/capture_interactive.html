@@ -145,11 +145,14 @@
           </div>
         </div>
       </div>      <div class="modal-footer justify-content-center">
-        <div class="text-center w-100 mb-2">
+        <div class="text-center w-100 mb-2" id="countdownNotice">
           <small class="text-muted">將在 <span id="countdown">5</span> 秒後自動返回地圖</small>
         </div>
-        <a href="{{ url_for('game.catch') }}" class="btn btn-primary">返回地圖</a>
-        <a href="{{ url_for('main.profile') }}" class="btn btn-outline-secondary">查看我的精靈</a>
+        <button type="button" class="btn btn-success" id="retryCaptureBtn" style="display: none;">
+          <i class="fas fa-redo me-1"></i>再次捕捉
+        </button>
+        <a href="{{ url_for('game.catch') }}" class="btn btn-primary" id="returnMapBtn">返回地圖</a>
+        <a href="{{ url_for('main.profile') }}" class="btn btn-outline-secondary" id="viewProfileBtn">查看我的精靈</a>
       </div>
     </div>
   </div>
