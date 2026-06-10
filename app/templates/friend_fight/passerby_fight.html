@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}路人對戰 - 精靈公車{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header bg-warning text-dark text-center">
+                    <h3><i class="fas fa-location-arrow me-2"></i>路人對戰</h3>
+                    <p class="mb-0">依照目前定位搜尋附近玩家</p>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-5">
+                            <h5 class="text-center mb-3">你的精靈</h5>
+                            <div class="arena-slot player-slot" id="player-slot" onclick="passerbyFight.openModal()">
+                                <span class="placeholder">
+                                    <i class="fas fa-plus fa-3x"></i>
+                                    <div>選擇精靈</div>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-center justify-content-center">
+                            <div class="vs-indicator">
+                                <i class="fas fa-bolt fa-3x text-warning"></i>
+                                <div class="text-center mt-2"><strong>VS</strong></div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <h5 class="text-center mb-3">對手</h5>
+                            <div class="arena-slot opponent-slot" id="opponent-slot">
+                                <span class="placeholder">
+                                    <i class="fas fa-magnifying-glass-location fa-3x"></i>
+                                    <div>等待搜尋</div>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button id="match-button" class="btn btn-warning btn-lg" style="display:none;" onclick="passerbyFight.startMatch()">
+                            <i class="fas fa-location-crosshairs me-2"></i>開始搜尋附近對手
+                        </button>
+                        <a href="{{ url_for('friend_fight.choose_fight') }}" class="btn btn-outline-secondary ms-2">
+                            <i class="fas fa-arrow-left me-2"></i>返回
+                        </a>
+                    </div>
+
+                    <div id="status-message" class="alert alert-info mt-3" style="display:none;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="status-text"></span>
+                    </div>
+
+                    <div id="result-actions" class="text-center mt-3" style="display:none;">
+                        <button class="btn btn-primary me-2" onclick="window.location.reload()">
+                            <i class="fas fa-redo me-2"></i>再找一場
+                        </button>
+                        <a href="{{ url_for('main.home') }}" class="btn btn-success">
+                            <i class="fas fa-home me-2"></i>返回主頁
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="spriteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">選擇你的出戰精靈</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row" id="creature-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .arena-slot {
+        width: 250px;
+        height: 250px;
+        background-color: var(--card-bg);
+        border: 3px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto;
+        border-radius: 15px;
+        transition: all 0.3s ease;
+    }
+
+    .player-slot {
+        border-color: var(--primary-color);
+        cursor: pointer;
+    }
+
+    .opponent-slot {
+        border-color: var(--warning-color);
+    }
+
+    .arena-slot img {
+        max-height: 185px;
+        max-width: 200px;
+        border-radius: 10px;
+    }
+
+    .placeholder {
+        color: var(--text-muted);
+        text-align: center;
+    }
+
+    .creature-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .creature-card:hover,
+    .creature-card.selected {
+        border-color: var(--warning-color);
+        transform: translateY(-4px);
+    }
+
+    .vs-indicator {
+        text-align: center;
+        animation: pulse 2s infinite;
+    }
+
+    .winner-glow {
+        box-shadow: 0 0 20px var(--success-color);
+        border-color: var(--success-color) !important;
+    }
+
+    .loser-fade {
+        opacity: 0.55;
+        filter: grayscale(45%);
+    }
+
+    .clash-from-left {
+        animation: clash-left 0.65s ease-in-out 1;
+    }
+
+    .clash-from-right {
+        animation: clash-right 0.65s ease-in-out 1;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+        100% { transform: scale(1); }
+    }
+
+    @keyframes clash-left {
+        0% { transform: translateX(0) scale(1); }
+        40% { transform: translateX(clamp(120px, 17vw, 180px)) scale(1.04); }
+        50% { transform: translateX(clamp(145px, 20vw, 220px)) scale(1.1); filter: brightness(1.25); }
+        64% { transform: translateX(clamp(95px, 13vw, 145px)) scale(0.98); }
+        100% { transform: translateX(0) scale(1); }
+    }
+
+    @keyframes clash-right {
+        0% { transform: translateX(0) scale(1); }
+        40% { transform: translateX(clamp(-180px, -17vw, -120px)) scale(1.04); }
+        50% { transform: translateX(clamp(-220px, -20vw, -145px)) scale(1.1); filter: brightness(1.25); }
+        64% { transform: translateX(clamp(-145px, -13vw, -95px)) scale(0.98); }
+        100% { transform: translateX(0) scale(1); }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/friend_fight/passerby_fight.js') }}"></script>
+<script>
+const passerbyFightConfig = {
+    urls: {
+        match: '{{ url_for("friend_fight.passerby_match") }}',
+        status: '{{ url_for("friend_fight.passerby_status", match_token="MATCH_TOKEN") }}',
+        catch: '{{ url_for("game.catch") }}'
+    }
+};
+</script>
+{% endblock %}

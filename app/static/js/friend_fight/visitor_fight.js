@@ -6,6 +6,7 @@ class VisitorFight {
         this.statusCheckInterval = null;
         this.currentRoomData = null;
         this.countdownTimer = null;
+        this.battleResultShown = false;
         
         // URL endpoints from Flask config
         this.urls = config.urls;
@@ -94,7 +95,7 @@ class VisitorFight {
                 
             case 'finished':
                 clearInterval(this.statusCheckInterval);
-                this.showBattleResult(roomData.battle_result);
+                this.playBattleSequence(roomData.battle_result);
                 break;
                 
             default:
@@ -168,11 +169,60 @@ class VisitorFight {
         });
     }
 
-    showBattleResult(result) {
+    playBattleSequence(result) {
+        if (this.battleResultShown || !result) {
+            return;
+        }
+        this.battleResultShown = true;
+
         // 移除戰鬥動畫
         document.querySelectorAll('.arena-slot').forEach(slot => {
             slot.classList.remove('battle-animation');
+            slot.classList.remove('winner-glow');
+            slot.classList.remove('loser-fade');
         });
+
+        document.getElementById('action-buttons').innerHTML = '';
+        this.showStatus('對手已出現，戰鬥即將開始...', 'primary');
+
+        this.sleep(1000)
+            .then(() => this.runClashAnimation())
+            .then(() => this.showBattleResult(result));
+    }
+
+    sleep(ms) {
+        return new Promise(resolve => {
+            setTimeout(resolve, ms);
+        });
+    }
+
+    async runClashAnimation() {
+        const visitorSlot = document.getElementById('visitor-slot');
+        const hostSlot = document.getElementById('host-slot');
+
+        for (let i = 0; i < 3; i++) {
+            await new Promise(resolve => {
+                visitorSlot.classList.remove('clash-from-left');
+                hostSlot.classList.remove('clash-from-right');
+                void visitorSlot.offsetWidth;
+
+                visitorSlot.classList.add('clash-from-left');
+                hostSlot.classList.add('clash-from-right');
+
+                setTimeout(() => {
+                    visitorSlot.classList.remove('clash-from-left');
+                    hostSlot.classList.remove('clash-from-right');
+                    resolve();
+                }, 650);
+            });
+
+            if (i < 2) {
+                await this.sleep(500);
+            }
+        }
+    }
+
+    showBattleResult(result) {
         
         let message = '';
         let isWinner = false;

@@ -95,9 +95,10 @@
     ],
     "stopName": "和平東路4段",
     "routes": [
-      "棕3"
+      "棕3",
+      "棕3路線"
     ],
-    "level": 1,
+    "level": 2,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,
@@ -289,9 +290,10 @@
     ],
     "stopName": "指南路",
     "routes": [
-      "棕3"
+      "棕3",
+      "棕3路線"
     ],
-    "level": 1,
+    "level": 2,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,
@@ -375,9 +377,10 @@
     "stopName": "政大",
     "routes": [
       "棕3",
-      "貓空左線(動物園)"
+      "貓空左線(動物園)",
+      "棕3路線"
     ],
-    "level": 2,
+    "level": 3,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,
@@ -459,9 +462,10 @@
     ],
     "stopName": "新光路口",
     "routes": [
-      "棕3"
+      "棕3",
+      "棕3路線"
     ],
-    "level": 1,
+    "level": 2,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,
@@ -522,9 +526,10 @@
     ],
     "stopName": "木柵高工",
     "routes": [
-      "棕3"
+      "棕3",
+      "棕3路線"
     ],
-    "level": 1,
+    "level": 2,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,
@@ -907,9 +912,10 @@
     ],
     "stopName": "萬寧街",
     "routes": [
-      "棕3"
+      "棕3",
+      "棕3路線"
     ],
-    "level": 1,
+    "level": 2,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,
@@ -1057,9 +1063,10 @@
     ],
     "stopName": "萬芳派出所",
     "routes": [
-      "棕3"
+      "棕3",
+      "棕3路線"
     ],
-    "level": 1,
+    "level": 2,
     "owner": null,
     "ownerPlayerId": null,
     "ownerCreature": null,

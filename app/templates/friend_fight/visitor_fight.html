@@ -112,11 +112,35 @@
     .battle-animation {
         animation: shake 0.5s ease-in-out;
     }
+
+    .clash-from-left {
+        animation: clash-left 0.65s ease-in-out 1;
+    }
+
+    .clash-from-right {
+        animation: clash-right 0.65s ease-in-out 1;
+    }
     
     @keyframes shake {
         0%, 100% { transform: translateX(0); }
         25% { transform: translateX(-5px); }
         75% { transform: translateX(5px); }
+    }
+
+    @keyframes clash-left {
+        0% { transform: translateX(0) scale(1); }
+        40% { transform: translateX(clamp(120px, 17vw, 180px)) scale(1.04); }
+        50% { transform: translateX(clamp(145px, 20vw, 220px)) scale(1.1); filter: brightness(1.25); }
+        64% { transform: translateX(clamp(95px, 13vw, 145px)) scale(0.98); }
+        100% { transform: translateX(0) scale(1); }
+    }
+
+    @keyframes clash-right {
+        0% { transform: translateX(0) scale(1); }
+        40% { transform: translateX(clamp(-180px, -17vw, -120px)) scale(1.04); }
+        50% { transform: translateX(clamp(-220px, -20vw, -145px)) scale(1.1); filter: brightness(1.25); }
+        64% { transform: translateX(clamp(-145px, -13vw, -95px)) scale(0.98); }
+        100% { transform: translateX(0) scale(1); }
     }
     
     .winner-glow {
