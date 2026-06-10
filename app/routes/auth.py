@@ -5,6 +5,7 @@ from app.models.user import User
 from app.extensions import db
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
+legacy_auth_bp = Blueprint("legacy_auth", __name__, url_prefix="/auth")
 
 
 def _bad_request(msg="bad request"):
@@ -115,6 +116,24 @@ def me():
         "user_id": str(g.user.id),
         "username": g.user.username
     })
+
+
+def _custom_token_unavailable():
+    return jsonify({
+        "success": False,
+        "token": None,
+        "message": "Firebase custom-token login is not configured; using Flask session auth.",
+    })
+
+
+@auth_bp.get("/get-custom-token")
+def get_custom_token():
+    return _custom_token_unavailable()
+
+
+@legacy_auth_bp.get("/get-custom-token")
+def legacy_get_custom_token():
+    return _custom_token_unavailable()
 
 
 @auth_bp.get("/terms-of-service", endpoint="terms_of_service")

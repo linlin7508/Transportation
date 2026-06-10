@@ -69,7 +69,7 @@ def create_app(config_name='default', load_tdx=True):
     init_routes(app)
 
     # 註冊 Auth/Profile (Phase 7)
-    from app.routes.auth import auth_bp
+    from app.routes.auth import auth_bp, legacy_auth_bp
     from app.routes.profile import profile_bp
     from app.routes.friend import friend_bp
     from app.routes.friend import friend_api_bp
@@ -86,6 +86,7 @@ def create_app(config_name='default', load_tdx=True):
     from app.routes.companion import companion_bp, chat_api_bp
 
     app.register_blueprint(auth_bp)
+    app.register_blueprint(legacy_auth_bp)
     app.register_blueprint(profile_bp)
     app.register_blueprint(friend_bp)
     app.register_blueprint(friend_api_bp)

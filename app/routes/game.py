@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import json
 import random
 import threading
@@ -511,13 +512,50 @@ def _active_route_creature_spawns(spawn_if_due: bool = True) -> list[dict]:
 
 def _find_route_creature(creature_id: str) -> dict | None:
     decoded_id = unquote(str(creature_id))
-    return next(
+    creature = next(
         (
             item for item in [*_active_route_creature_spawns(spawn_if_due=False), *_all_route_creatures()]
             if str(item["id"]) == decoded_id or item["name"] == decoded_id
         ),
         None,
     )
+    if creature:
+        return creature
+
+    return _missing_spawn_creature_from_id(decoded_id)
+
+
+def _missing_spawn_creature_from_id(creature_id: str) -> dict | None:
+    if not creature_id.startswith("spawn-"):
+        return None
+
+    spawn_parts = creature_id.removeprefix("spawn-").rsplit("-", 2)
+    if len(spawn_parts) != 3:
+        return None
+
+    route_id, spawned_at, _spawn_suffix = spawn_parts
+    try:
+        spawned_at_float = float(spawned_at)
+    except (TypeError, ValueError):
+        return None
+
+    if time.time() - spawned_at_float > _ROUTE_CREATURE_LIFETIME + 300:
+        return None
+
+    route_sources = [
+        creature for creature in _all_route_creatures()
+        if creature.get("route_id") == route_id
+    ]
+    if not route_sources:
+        return None
+
+    digest = hashlib.sha256(creature_id.encode("utf-8")).hexdigest()
+    source = route_sources[int(digest, 16) % len(route_sources)]
+    return _normalize_creature_payload({
+        **source,
+        "id": creature_id,
+        "route_id": route_id,
+    }, randomize_stats=True)
 
 
 def _remove_route_creature_spawn(creature_id: str) -> None:
