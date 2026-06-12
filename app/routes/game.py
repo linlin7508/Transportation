@@ -15,6 +15,7 @@ from app.models.arena import Arena
 from app.models.creature import Creature, ElementType
 from app.models.profile import Profile
 from app.services.creature_images import CREATURE_IMAGE_URLS, get_creature_image_url
+from app.services.user_stats import record_battle_result
 
 game_bp = Blueprint("game", __name__, url_prefix="/game")
 _CREATURE_CSV = Path(__file__).resolve().parents[1] / "data" / "creatures" / "current_creatures.csv"
@@ -1332,6 +1333,8 @@ def arena_battle_battle():
 
         arenas[arena_key] = arena
         _write_cached_arenas(arenas)
+        record_battle_result(user.id, is_win)
+        db.session.commit()
         return jsonify({
             "success": True,
             "is_win": is_win,

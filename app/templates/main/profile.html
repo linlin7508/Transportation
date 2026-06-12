@@ -119,184 +119,29 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script>
-    // 初始化Firebase
-    var firebaseConfig = {
-        apiKey: "{{ firebase_config.apiKey }}",
-        authDomain: "{{ firebase_config.authDomain }}",
-        projectId: "{{ firebase_config.projectId }}",
-        storageBucket: "{{ firebase_config.storageBucket }}",
-        messagingSenderId: "{{ firebase_config.messagingSenderId }}",
-        appId: "{{ firebase_config.appId }}"
-    };
-    
-    // 初始化Firebase應用
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    
-    // 取得Firestore資料庫實例
-    var db = firebase.firestore();
-      // 從Firebase獲取用戶數據
     document.addEventListener('DOMContentLoaded', function() {
-        const userId = "{{ session['user']['uid'] }}";
-        
-        if (!userId) {
-            console.error("未登入或找不到用戶ID");
-            return;
-        }
-        
-        console.log("正在從 Firebase 獲取用戶數據, 用戶ID:", userId);
-        
-        // 從Firestore獲取用戶資料
-        db.collection('users').doc(userId).get()
-            .then(function(doc) {
-                if (doc.exists) {
-                    const userData = doc.data();
-                    console.log("成功獲取用戶資料:", userData);
-                    
-                    // 檢查頭像資料
-                    if (userData.avatar) {
-                        console.log("用戶頭像 URL:", userData.avatar);
-                        console.log("頭像 URL 長度:", userData.avatar.length);
-                    } else {
-                        console.log("用戶資料中沒有頭像 URL");
-                    }
-                    
-                    updateUserProfile(userData);
-                      // 獲取用戶已捕獲的精靈
-                    loadUserCreatures(userId);
-                    
-                    // 獲取用戶擁有的道館
-                    loadUserArenas(userId);
-                } else {
-                    console.error("找不到用戶資料!");
+        fetch('/api/profile/me', { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.profile || !data.stats) {
+                    throw new Error(data.error || 'profile data missing');
                 }
+
+                const stats = data.stats;
+                document.getElementById('user-level').textContent = stats.level || 1;
+                document.getElementById('captured-count').textContent = stats.captured_count || 0;
+                document.getElementById('arena-count').textContent = stats.arena_count || 0;
+                document.getElementById('battle-count').textContent = stats.battle_count || 0;
+
+                const currentExp = stats.exp_current || 0;
+                const nextExp = stats.exp_next || 100;
+                document.getElementById('exp-text').textContent = `${currentExp}/${nextExp}`;
+                document.getElementById('exp-progress').style.width = `${Math.min(stats.exp_progress_percent || 0, 100)}%`;
             })
-            .catch(function(error) {
-                console.error("獲取用戶資料錯誤:", error);
+            .catch(error => {
+                console.error('載入個人統計失敗:', error);
             });
     });
-      // 載入用戶精靈數據並更新統計
-    function loadUserCreatures(userId) {
-        console.log("正在載入用戶精靈數據...");
-        
-        db.collection('users').doc(userId).collection('user_creatures').get()
-            .then(function(querySnapshot) {
-                const creaturesCount = querySnapshot.size;
-                console.log("用戶精靈數量:", creaturesCount);
-                document.getElementById('captured-count').textContent = creaturesCount;
-            })
-            .catch(function(error) {
-                console.error("載入精靈數據錯誤:", error);
-                document.getElementById('captured-count').textContent = "0";
-            });
-    }
-    
-    // 載入用戶道館數據並更新統計
-    function loadUserArenas(userId) {
-        console.log("正在載入用戶道館數據...");
-        
-        db.collection('users').doc(userId).collection('user_arenas').get()
-            .then(function(querySnapshot) {
-                const arenasCount = querySnapshot.size;
-                console.log("用戶道館數量:", arenasCount);
-                document.getElementById('arena-count').textContent = arenasCount;
-            })
-            .catch(function(error) {
-                console.error("載入道館數據錯誤:", error);
-                document.getElementById('arena-count').textContent = "0";
-            });
-    }// 更新用戶資料顯示
-    function updateUserProfile(userData) {
-        console.log("從 Firebase 獲取的用戶資料:", userData);
-        
-        // 設定用戶等級（確保有默認值）
-        const userLevel = userData.level || 1;
-        document.getElementById('user-level').textContent = userLevel;
-        
-        // 設定用戶經驗值（確保有默認值）
-        const userExp = userData.experience || 0;
-        const nextLevelExp = calculateMaxExperience(userLevel);
-        document.getElementById('exp-text').textContent = `${userExp}/${nextLevelExp}`;
-        
-        // 更新經驗值進度條
-        const expPercentage = Math.min((userExp / nextLevelExp) * 100, 100);
-        document.getElementById('exp-progress').style.width = `${expPercentage}%`;
-        
-        // 更新戰鬥次數（確保有默認值）
-        const battleCount = userData.fight_count || 0;
-        document.getElementById('battle-count').textContent = battleCount;
-        
-        // 如果用戶數據中缺少等級或經驗值，進行初始化
-        if (!userData.level || !userData.experience) {
-            console.log("檢測到用戶缺少等級或經驗值數據，進行初始化...");
-            initializeUserLevelAndExperience(userData);
-        }
-        
-        // 更新用戶頭像
-        const userAvatar = userData.avatar || null;
-        if (userAvatar && userAvatar !== 'default.png') {
-            console.log("設置用戶頭像:", userAvatar);
-            document.getElementById('user-avatar').src = userAvatar;
-        } else {
-            console.log("使用默認頭像");
-        }
-    }
-    
-    // 初始化用戶等級和經驗值
-    function initializeUserLevelAndExperience(userData) {
-        const userId = "{{ session['user']['uid'] }}";
-        const updateData = {};
-        
-        if (!userData.level) {
-            updateData.level = 1;
-        }
-        if (!userData.experience) {
-            updateData.experience = 0;
-        }
-        
-        if (Object.keys(updateData).length > 0) {
-            console.log("正在初始化用戶等級和經驗值:", updateData);
-            db.collection('users').doc(userId).update(updateData)
-                .then(() => {
-                    console.log("用戶等級和經驗值初始化成功");
-                    // 重新更新顯示
-                    const updatedUserData = { ...userData, ...updateData };
-                    updateUserProfile(updatedUserData);
-                })
-                .catch(error => {
-                    console.error("初始化用戶等級和經驗值失敗:", error);
-                });
-        }
-    }
-    
-    // 計算指定等級升級所需的最大經驗值（與後端一致的公式）
-    function calculateMaxExperience(level) {
-        const baseExp = 100;
-        const maxExp = Math.floor(baseExp * Math.pow(2, level - 1));
-        return Math.min(maxExp, 5000); // 設定上限為5000
-    }
-    // 格式化日期
-    function formatDate(timestamp) {
-        if (!timestamp) return '未知日期';
-        
-        // 如果是Firebase Timestamp格式
-        if (timestamp && timestamp.seconds) {
-            const date = new Date(timestamp.seconds * 1000);
-            return date.toLocaleDateString('zh-TW');
-        }
-        
-        // 如果是其他格式，嘗試轉換為日期
-        try {
-            const date = new Date(timestamp);
-            return date.toLocaleDateString('zh-TW');
-        } catch (e) {
-            return '未知日期';
-        }
-    }
 </script>
 {% endblock %}

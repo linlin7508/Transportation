@@ -8,6 +8,7 @@ from app.models.achievement import (
     CATEGORY_ICONS,
     UserAchievement,
 )
+from app.services.user_stats import achievement_progress_for_stats, get_user_stats, sync_user_achievements
 
 achievement_bp = Blueprint("achievement", __name__, url_prefix="/achievement")
 
@@ -51,7 +52,11 @@ def summary():
 def user_achievements():
     user_id = str(session.get("user_id") or session.get("user", {}).get("uid") or "")
     user_records = {}
+    stats_snapshot = {}
     if user_id:
+        sync_user_achievements(user_id)
+        db.session.commit()
+        stats_snapshot = get_user_stats(user_id)
         records = UserAchievement.query.filter_by(user_id=user_id).all()
         user_records = {record.achievement_id: record for record in records}
 
@@ -63,7 +68,8 @@ def user_achievements():
     for achievement_id, achievement in ACHIEVEMENTS.items():
         record = user_records.get(achievement_id)
         completed = record is not None
-        progress = record.progress if record else 0
+        live_progress = achievement_progress_for_stats(achievement_id, stats_snapshot) if stats_snapshot else 0
+        progress = max(record.progress if record else 0, live_progress)
         completed_at = None
 
         if completed:

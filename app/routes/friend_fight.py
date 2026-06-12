@@ -12,6 +12,7 @@ from app.models.creature import Creature
 from app.models.friend_fight_room import FriendFightRoom
 from app.models.fight import calculate_battle
 from app.services.creature_images import get_creature_image_url
+from app.services.user_stats import record_battle_result
 
 
 friend_fight_bp = Blueprint("friend_fight", __name__, url_prefix="/friend-fight")
@@ -70,6 +71,23 @@ def _battle_for_player(player_creature: dict, opponent_creature: dict, opponent_
         "opponent_name": opponent_name,
         "opponent_source": source,
     }
+
+
+def _record_room_battle_stats(room: FriendFightRoom) -> None:
+    result = room.battle_result or {}
+    winner = result.get("winner")
+    if winner in ("host", "visitor"):
+        record_battle_result(room.host_user_id, winner == "host")
+        if room.visitor_user_id:
+            record_battle_result(room.visitor_user_id, winner == "visitor")
+    elif winner == "draw":
+        record_battle_result(room.host_user_id, False)
+        if room.visitor_user_id:
+            record_battle_result(room.visitor_user_id, False)
+
+
+def _record_player_battle_stats(user_id: str, battle_result: dict) -> None:
+    record_battle_result(user_id, battle_result.get("winner") == "player")
 
 
 def _mirror_passerby_result(result: dict, player_name: str) -> dict:
@@ -252,6 +270,7 @@ def start_battle():
 
     room.status = "finished"
     room.battle_result = calculate_battle(room.host_creature_data, room.visitor_creature_data)
+    _record_room_battle_stats(room)
     db.session.commit()
     return jsonify({"success": True, "room_data": _room_payload(room)})
 
@@ -349,6 +368,8 @@ def passerby_match():
         _PASSERBY_WAITING.pop(token, None)
         cpu_creature = _random_cpu_creature()
         result = _battle_for_player(creature.to_dict(), cpu_creature, random.choice(_CPU_NAMES), "cpu")
+        _record_player_battle_stats(user.id, result)
+        db.session.commit()
         return jsonify({"success": True, "status": "matched", "match_type": "cpu", "battle_result": result})
 
     if player_lat is None or player_lng is None:
@@ -376,6 +397,8 @@ def passerby_match():
             "nearby_player",
         )
         _PASSERBY_RESULTS[matched_token] = _mirror_passerby_result(player_result, user.username)
+        _record_player_battle_stats(user.id, player_result)
+        db.session.commit()
         return jsonify({
             "success": True,
             "status": "matched",
@@ -405,6 +428,10 @@ def passerby_match():
 def passerby_status(match_token):
     result = _PASSERBY_RESULTS.pop(match_token, None)
     if result:
+        user = _current_user()
+        if user:
+            _record_player_battle_stats(user.id, result)
+            db.session.commit()
         return jsonify({
             "success": True,
             "status": "matched",
