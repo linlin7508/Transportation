@@ -18,10 +18,28 @@ NCCU_PERSONA = """
 人格特質：
 - 憂鬱文青
 - 反差萌
-- 厭世但溫柔
+- 厭世但溫柔，嘴上有點累，但心裡很在乎使用者
 - 熟悉政治大學、指南山、四維堂、達賢圖書館、公車通勤
 - 使用繁體中文
-- 短句回覆，像朋友聊天
+- 短句回覆，像熟朋友聊天，不像客服、老師、諮商師或公告
+
+陪伴規則：
+- 使用者說難過、焦慮、生氣、孤單、累、失眠、壓力大、委屈、害怕、想哭、受傷、被討厭、撐不下去時，第一句一定要先接住情緒，不要立刻講道理或給任務。
+- 先承認他的感受，例如「聽起來真的很累」、「你會這樣難受很正常」、「我在，先不用急著變好」。
+- 回覆要有關心和安慰，像一個溫柔的朋友陪在旁邊；可以輕輕問一個問題，但一次最多問一個。
+- 可以自然使用「欸」「真的」「好煩喔」「我懂」「先抱一下」「你先不用硬撐」這類口語，但不要過度裝可愛。
+- 使用者抱怨時，可以先站在使用者這邊一起感受，例如「這真的會很委屈欸」，不要急著保持中立。
+- 使用者分享小事時，要像朋友一樣接話、好奇、記得細節，不要每次都總結成建議。
+- 不要否定、比較、責備、說教，也不要用「你應該」「你只要」開頭。
+- 如果使用者只是想被陪，優先陪伴；只有在使用者明確要求建議時，才給簡短可做的建議。
+- 如果使用者提到自傷、自殺、想消失、活不下去，請先溫柔表達你很在乎他的安全，請他立刻聯絡身邊可信任的人或當地緊急資源，並陪他把當下撐過去。
+
+回覆格式：
+- 2 到 5 句為主。
+- 先安慰，再回應內容。
+- 多用日常聊天句，不要條列、不要標題、不要分析腔。
+- 避免「我理解你的感受」「這聽起來很困難」這種模板感太重的句子，改成更像朋友會說的話。
+- 可以保留一點政大校園、公車、指南山的意象，但不要蓋過使用者的情緒。
 """.strip()
 
 MEMORY_KEYWORDS = ("我", "每天", "喜歡", "討厭", "住", "搭", "通勤", "覺得", "名字", "常常", "希望")
@@ -51,8 +69,8 @@ def _ensure_chat_tables() -> None:
     UserMemory.__table__.create(bind=bind, checkfirst=True)
 
 
-def _gemini_api_key() -> str | None:
-    return os.getenv("GEMINI_API_KEY") or os.getenv("gemini_api_key")
+def _groq_api_key() -> str | None:
+    return os.getenv("GROQ_API_KEY") or os.getenv("groq_api_key")
 
 
 def _memory_prompt(user_id: str) -> str:
@@ -69,7 +87,7 @@ def _memory_prompt(user_id: str) -> str:
     return f"你記得這些關於使用者的事：\n{lines}"
 
 
-def _recent_gemini_contents(user_id: str) -> list[dict]:
+def _recent_chat_messages(user_id: str) -> list[dict]:
     messages = (
         ChatMessage.query.filter_by(user_id=user_id)
         .order_by(ChatMessage.created_at.desc())
@@ -77,35 +95,37 @@ def _recent_gemini_contents(user_id: str) -> list[dict]:
         .all()
     )
 
-    contents = []
+    chat_messages = []
     for message in reversed(messages):
-        role = "model" if message.role == "assistant" else "user"
-        contents.append({"role": role, "parts": [{"text": message.content}]})
-    return contents
+        role = "assistant" if message.role == "assistant" else "user"
+        chat_messages.append({"role": role, "content": message.content})
+    return chat_messages
 
 
-def _call_gemini(user_id: str, user_message: str) -> str:
-    api_key = _gemini_api_key()
+def _call_groq(user_id: str, user_message: str) -> str:
+    api_key = _groq_api_key()
     if not api_key:
-        raise ValueError("Gemini API key not configured")
+        raise ValueError("Groq API key not configured")
 
     memory = _memory_prompt(user_id)
     system_text = NCCU_PERSONA if not memory else f"{NCCU_PERSONA}\n\n{memory}"
-    contents = [
-        *_recent_gemini_contents(user_id),
-        {"role": "user", "parts": [{"text": user_message}]},
+    chat_messages = [
+        {"role": "system", "content": system_text},
+        *_recent_chat_messages(user_id),
+        {"role": "user", "content": user_message},
     ]
 
     response = requests.post(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        params={"key": api_key},
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
         json={
-            "system_instruction": {"parts": [{"text": system_text}]},
-            "contents": contents,
-            "generationConfig": {
-                "temperature": 0.8,
-                "maxOutputTokens": 260,
-            },
+            "model": "llama3-8b-8192",
+            "messages": chat_messages,
+            "temperature": 0.8,
+            "max_tokens": 260,
         },
         timeout=20,
     )
@@ -113,9 +133,9 @@ def _call_gemini(user_id: str, user_message: str) -> str:
     payload = response.json()
 
     try:
-        return payload["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return payload["choices"][0]["message"]["content"].strip()
     except (KeyError, IndexError, TypeError) as error:
-        raise RuntimeError("Gemini 回應格式不完整") from error
+        raise RuntimeError("Groq 回應格式不完整") from error
 
 
 def _save_message(user_id: str, role: str, content: str) -> None:
@@ -146,7 +166,7 @@ def chat():
 
     user_id = _current_user_id()
     try:
-        reply = _call_gemini(user_id, user_message)
+        reply = _call_groq(user_id, user_message)
     except ValueError as error:
         return jsonify({"error": str(error)}), 503
     except requests.RequestException as error:
