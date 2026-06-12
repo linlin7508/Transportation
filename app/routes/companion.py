@@ -2,7 +2,8 @@ import os
 import uuid
 
 import requests
-from flask import Blueprint, g, jsonify, render_template, request, session
+from flask import Blueprint, current_app, g, jsonify, render_template, request, session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.extensions import db
 from app.models.chat import ChatMessage, UserMemory
@@ -63,10 +64,23 @@ def _current_user_id() -> str:
     return str(session["chat_guest_id"])
 
 
-def _ensure_chat_tables() -> None:
-    bind = db.engine
-    ChatMessage.__table__.create(bind=bind, checkfirst=True)
-    UserMemory.__table__.create(bind=bind, checkfirst=True)
+def _rollback_db_session() -> None:
+    try:
+        db.session.rollback()
+    except SQLAlchemyError:
+        db.session.remove()
+
+
+def _ensure_chat_tables() -> bool:
+    try:
+        bind = db.engine
+        ChatMessage.__table__.create(bind=bind, checkfirst=True)
+        UserMemory.__table__.create(bind=bind, checkfirst=True)
+        return True
+    except SQLAlchemyError as error:
+        _rollback_db_session()
+        current_app.logger.warning("Chat persistence is unavailable: %s", error)
+        return False
 
 
 def _groq_api_key() -> str | None:
@@ -74,12 +88,18 @@ def _groq_api_key() -> str | None:
 
 
 def _memory_prompt(user_id: str) -> str:
-    memories = (
-        UserMemory.query.filter_by(user_id=user_id)
-        .order_by(UserMemory.created_at.desc())
-        .limit(6)
-        .all()
-    )
+    try:
+        memories = (
+            UserMemory.query.filter_by(user_id=user_id)
+            .order_by(UserMemory.created_at.desc())
+            .limit(6)
+            .all()
+        )
+    except SQLAlchemyError as error:
+        _rollback_db_session()
+        current_app.logger.warning("Chat memory is unavailable: %s", error)
+        return ""
+
     if not memories:
         return ""
 
@@ -88,12 +108,17 @@ def _memory_prompt(user_id: str) -> str:
 
 
 def _recent_chat_messages(user_id: str) -> list[dict]:
-    messages = (
-        ChatMessage.query.filter_by(user_id=user_id)
-        .order_by(ChatMessage.created_at.desc())
-        .limit(10)
-        .all()
-    )
+    try:
+        messages = (
+            ChatMessage.query.filter_by(user_id=user_id)
+            .order_by(ChatMessage.created_at.desc())
+            .limit(10)
+            .all()
+        )
+    except SQLAlchemyError as error:
+        _rollback_db_session()
+        current_app.logger.warning("Recent chat messages are unavailable: %s", error)
+        return []
 
     chat_messages = []
     for message in reversed(messages):
@@ -122,7 +147,7 @@ def _call_groq(user_id: str, user_message: str) -> str:
             "Content-Type": "application/json",
         },
         json={
-            "model": "llama3-8b-8192",
+            "model": "llama-3.1-8b-instant",
             "messages": chat_messages,
             "temperature": 0.8,
             "max_tokens": 260,
@@ -155,7 +180,7 @@ def _maybe_store_memory(user_id: str, user_message: str) -> None:
 
 @chat_api_bp.post("")
 def chat():
-    _ensure_chat_tables()
+    persistence_available = _ensure_chat_tables()
 
     data = request.get_json(silent=True) or {}
     user_message = str(data.get("message") or "").strip()
@@ -178,24 +203,37 @@ def chat():
     except RuntimeError as error:
         return jsonify({"success": False, "message": str(error)}), 500
 
-    _save_message(user_id, "user", user_message)
-    _save_message(user_id, "assistant", reply)
-    _maybe_store_memory(user_id, user_message)
-    db.session.commit()
+    if persistence_available:
+        try:
+            _save_message(user_id, "user", user_message)
+            _save_message(user_id, "assistant", reply)
+            _maybe_store_memory(user_id, user_message)
+            db.session.commit()
+        except SQLAlchemyError as error:
+            _rollback_db_session()
+            current_app.logger.warning("Chat response was not persisted: %s", error)
 
     return jsonify({"success": True, "reply": reply})
 
 
 @chat_api_bp.get("/history")
 def chat_history():
-    _ensure_chat_tables()
+    if not _ensure_chat_tables():
+        return jsonify({"success": True, "messages": []})
+
     user_id = _current_user_id()
-    messages = (
-        ChatMessage.query.filter_by(user_id=user_id)
-        .order_by(ChatMessage.created_at.desc())
-        .limit(30)
-        .all()
-    )
+    try:
+        messages = (
+            ChatMessage.query.filter_by(user_id=user_id)
+            .order_by(ChatMessage.created_at.desc())
+            .limit(30)
+            .all()
+        )
+    except SQLAlchemyError as error:
+        _rollback_db_session()
+        current_app.logger.warning("Chat history is unavailable: %s", error)
+        return jsonify({"success": True, "messages": []})
+
     return jsonify({
         "success": True,
         "messages": [

@@ -6,7 +6,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import quote, unquote
 
 from flask import Blueprint, g, jsonify, request, render_template, session
 
@@ -401,6 +401,7 @@ def _normalize_creature_payload(creature: dict, index: int = 0, randomize_stats:
 
     return {
         "id": creature.get("id") or creature.get("ID") or f"data-{index + 1}",
+        "source_id": creature.get("source_id"),
         "name": name,
         "en_name": creature.get("en_name") or creature.get("EN_Name") or "",
         "type": creature.get("type") or creature.get("Type") or creature.get("element_type") or "normal",
@@ -462,11 +463,29 @@ def _all_route_creatures() -> list[dict]:
     return _creatures_from_csv() or _creatures_from_images()
 
 
+def _route_creature_source_by_id(source_id: str) -> dict | None:
+    decoded_source_id = unquote(str(source_id))
+    return next(
+        (
+            creature for creature in _all_route_creatures()
+            if str(creature.get("id")) == decoded_source_id
+        ),
+        None,
+    )
+
+
+def _spawn_route_creature_id(route_id: str, source_id: str, now: float) -> str:
+    encoded_route_id = quote(str(route_id), safe="")
+    encoded_source_id = quote(str(source_id), safe="")
+    return f"spawn~{encoded_route_id}~{encoded_source_id}~{int(now)}~{uuid.uuid4().hex[:8]}"
+
+
 def _spawn_route_creature(source: dict, route_id: str, route_name: str, route_file_key: str, base_lat: float, base_lng: float, now: float) -> dict:
     position = _random_route_position(route_file_key, base_lat, base_lng)
+    source_id = str(source.get("id") or "")
     spawned = _normalize_creature_payload({
         **source,
-        "id": f"spawn-{route_id}-{int(now)}-{uuid.uuid4().hex[:8]}",
+        "id": _spawn_route_creature_id(route_id, source_id, now),
         "route_id": route_id,
         "route_name": route_name,
         "lat": position["lat"],
@@ -474,6 +493,7 @@ def _spawn_route_creature(source: dict, route_id: str, route_name: str, route_fi
         "hp": None,
         "attack": None,
     }, randomize_stats=True)
+    spawned["source_id"] = source_id
     spawned["spawned_at"] = now
     spawned["expires_at"] = now + _ROUTE_CREATURE_LIFETIME
     spawned["lifetime_seconds"] = _ROUTE_CREATURE_LIFETIME
@@ -526,9 +546,42 @@ def _find_route_creature(creature_id: str) -> dict | None:
 
 
 def _missing_spawn_creature_from_id(creature_id: str) -> dict | None:
-    if not creature_id.startswith("spawn-"):
+    if creature_id.startswith("spawn~"):
+        return _missing_current_spawn_creature_from_id(creature_id)
+    if creature_id.startswith("spawn-"):
+        return _missing_legacy_spawn_creature_from_id(creature_id)
+    return None
+
+
+def _missing_current_spawn_creature_from_id(creature_id: str) -> dict | None:
+    spawn_parts = creature_id.split("~")
+    if len(spawn_parts) != 5:
         return None
 
+    _prefix, encoded_route_id, encoded_source_id, spawned_at, _spawn_suffix = spawn_parts
+    route_id = unquote(encoded_route_id)
+    source_id = unquote(encoded_source_id)
+    try:
+        spawned_at_float = float(spawned_at)
+    except (TypeError, ValueError):
+        return None
+
+    if time.time() - spawned_at_float > _ROUTE_CREATURE_LIFETIME + 300:
+        return None
+
+    source = _route_creature_source_by_id(source_id)
+    if not source:
+        return None
+
+    return _normalize_creature_payload({
+        **source,
+        "id": creature_id,
+        "route_id": route_id,
+        "source_id": source_id,
+    }, randomize_stats=True)
+
+
+def _missing_legacy_spawn_creature_from_id(creature_id: str) -> dict | None:
     spawn_parts = creature_id.removeprefix("spawn-").rsplit("-", 2)
     if len(spawn_parts) != 3:
         return None
