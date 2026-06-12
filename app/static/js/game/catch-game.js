@@ -585,6 +585,10 @@ function displayCreaturesDirectly(creatures) {
 
 function ensureLocalShopLayer(map) {
   if (!map || typeof L === 'undefined') return null;
+  if (!map.getPane('localShopPane')) {
+    map.createPane('localShopPane');
+    map.getPane('localShopPane').style.zIndex = 720;
+  }
   if (!window.localShopLayer) {
     window.localShopLayer = L.layerGroup();
   }
@@ -626,6 +630,7 @@ function displayLocalShops(shops) {
   if (!map || !layer) return;
 
   layer.clearLayers();
+  window.localShopMarkers = {};
 
   shops.forEach(shop => {
     const lat = parseFloat(shop.lat ?? shop.y);
@@ -635,16 +640,17 @@ function displayLocalShops(shops) {
     const shopIcon = L.divIcon({
       className: 'local-shop-marker',
       html: `
-        <div class="local-shop-marker-inner">
-          <i class="fas fa-store"></i>
+        <div class="local-shop-marker-badge">
+          <span class="local-shop-symbol">店</span>
+          <span class="local-shop-points">${shop.unlock_points || 50}</span>
         </div>
       `,
-      iconSize: [42, 42],
-      iconAnchor: [21, 42],
-      popupAnchor: [0, -38]
+      iconSize: [44, 44],
+      iconAnchor: [22, 22],
+      popupAnchor: [0, -24]
     });
 
-    const marker = L.marker([lat, lng], { icon: shopIcon });
+    const marker = L.marker([lat, lng], { icon: shopIcon, pane: 'localShopPane', zIndexOffset: 1200 });
     marker.bindPopup(`
       <div class="local-shop-popup">
         <div class="local-shop-title">
@@ -658,6 +664,7 @@ function displayLocalShops(shops) {
       </div>
     `);
     marker.addTo(layer);
+    window.localShopMarkers[shop.id || `${lat}-${lng}`] = marker;
   });
 }
 
