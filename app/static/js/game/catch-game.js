@@ -13,6 +13,7 @@ var dataSourceToggle = true; // 保留舊切換旗標；地圖精靈目前統一
 var creatureUpdateInterval = 15000; // 15秒更新一次，實現交替更新
 var firebaseListener = null; // 用於存儲Firebase監聽器的引用
 var lastDataSourceUpdateTime = 0; // 上次資料來源更新時間
+var localShops = [];
 
 function getLocationErrorMessage(error) {
   if (!error) {
@@ -142,6 +143,8 @@ function checkMapInitialized(callback, retryCount = 0) {
       window.renderAllArenas();
     }
 
+    ensureLocalShopLayer(window.busMap);
+
     // 如果提供了回調函數，執行它
     if (typeof callback === 'function') {
       callback();
@@ -234,6 +237,7 @@ function fetchCreatures() {
 
         // 在地圖上顯示精靈
         displayCreaturesDirectly(currentCreatures);
+        fetchLocalShops();
 
         // 顯示提示
         showGameAlert(`已更新 ${currentCreatures.length} 隻限時精靈！`, 'info', 3000);
@@ -276,6 +280,7 @@ function updateAllGameData() {
         
         // 在地圖上顯示精靈
         displayCreaturesDirectly(currentCreatures);
+        fetchLocalShops();
       }
       
       // 2. 更新公車位置（如果公車位置功能可用）
@@ -349,6 +354,7 @@ checkMapInitialized(function() {
     
     // 執行綜合初始化更新
     updateAllGameData();
+    fetchLocalShops();
     
     // 開始定期更新倒計時
     startUpdateCountdown();
@@ -393,6 +399,7 @@ function fetchRouteCreatures() {
         if (currentCreatures.length > 0) {
           // 在地圖上顯示精靈 - 直接使用新的渲染方法
           displayCreaturesDirectly(currentCreatures);
+          fetchLocalShops();
           
           // 設置Firebase監聽，監聽精靈刪除事件
           setupFirebaseListener();
@@ -574,6 +581,84 @@ function displayCreaturesDirectly(creatures) {
   
   // 顯示提示
   showGameAlert(`已在地圖上顯示 ${creatures.length} 隻精靈！`, 'success', 8000);
+}
+
+function ensureLocalShopLayer(map) {
+  if (!map || typeof L === 'undefined') return null;
+  if (!window.localShopLayer) {
+    window.localShopLayer = L.layerGroup();
+  }
+  if (!map.hasLayer(window.localShopLayer)) {
+    window.localShopLayer.addTo(map);
+  }
+  return window.localShopLayer;
+}
+
+function fetchLocalShops() {
+  const map = window.busMap || window.gameMap;
+  if (!map || typeof L === 'undefined') {
+    console.warn('地圖尚未初始化，暫不載入在地店家');
+    return;
+  }
+
+  fetch('/game/api/local-shops')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('獲取在地店家失敗');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (!data.success) {
+        throw new Error(data.message || '在地店家資料格式錯誤');
+      }
+      localShops = data.shops || [];
+      displayLocalShops(localShops);
+    })
+    .catch(error => {
+      console.error('載入在地店家失敗:', error);
+    });
+}
+
+function displayLocalShops(shops) {
+  const map = window.busMap || window.gameMap;
+  const layer = ensureLocalShopLayer(map);
+  if (!map || !layer) return;
+
+  layer.clearLayers();
+
+  shops.forEach(shop => {
+    const lat = parseFloat(shop.lat ?? shop.y);
+    const lng = parseFloat(shop.lng ?? shop.x);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+    const shopIcon = L.divIcon({
+      className: 'local-shop-marker',
+      html: `
+        <div class="local-shop-marker-inner">
+          <i class="fas fa-store"></i>
+        </div>
+      `,
+      iconSize: [42, 42],
+      iconAnchor: [21, 42],
+      popupAnchor: [0, -38]
+    });
+
+    const marker = L.marker([lat, lng], { icon: shopIcon });
+    marker.bindPopup(`
+      <div class="local-shop-popup">
+        <div class="local-shop-title">
+          <i class="fas fa-store me-1"></i>${shop.name || '在地店家'}
+        </div>
+        <div class="local-shop-description">${shop.description || ''}</div>
+        <div class="local-shop-discount">
+          <i class="fas fa-ticket-alt me-1"></i>${shop.discount_text || `${shop.unlock_points || 50} point 解鎖折扣`}
+        </div>
+        <div class="local-shop-coordinates">x: ${Number(lng).toFixed(4)} / y: ${Number(lat).toFixed(4)}</div>
+      </div>
+    `);
+    marker.addTo(layer);
+  });
 }
 
 // 添加一個明顯的測試標記，用於驗證地圖是否正常工作

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "nccu-campus",
+    "name": "政治大學",
+    "x": 121.5766,
+    "y": 24.9876,
+    "lat": 24.9876,
+    "lng": 121.5766,
+    "description": "指南山腳下的冒險起點，補充精神再出發。",
+    "unlock_points": 50,
+    "discount_text": "50 point 解鎖校園合作折扣"
+  },
+  {
+    "id": "dah-hsian-library",
+    "name": "達賢圖書館",
+    "x": 121.5779,
+    "y": 24.9879,
+    "lat": 24.9879,
+    "lng": 121.5779,
+    "description": "安靜充電的知識據點，適合整理今日捕捉成果。",
+    "unlock_points": 50,
+    "discount_text": "50 point 解鎖閱讀補給折扣"
+  },
+  {
+    "id": "shangpin-dah-hsian-library",
+    "name": "小尚品 政大店",
+    "x": 121.5779,
+    "y": 24.9879,
+    "lat": 24.9879,
+    "lng": 121.5779,
+    "description": "達賢圖書館旁的在地補給點，讀書累了就來補一點熱量。",
+    "unlock_points": 50,
+    "discount_text": "買套餐加送肉盤4選1"
+  },
+  {
+    "id": "shangpin-muzha",
+    "name": "小尚品 木柵店",
+    "x": 121.5683,
+    "y": 24.9894,
+    "lat": 24.9894,
+    "lng": 121.5683,
+    "description": "木柵在地店家，適合探索前後順路吃飽再出發。",
+    "unlock_points": 50,
+    "discount_text": "買套餐加送肉盤4選1"
+  },
+  {
+    "id": "gis-taipei-tech",
+    "name": "集思北科大會議中心",
+    "x": 121.5357,
+    "y": 25.0437,
+    "lat": 25.0437,
+    "lng": 121.5357,
+    "description": "城市任務的集合點，會議後也能順路探索。",
+    "unlock_points": 50,
+    "discount_text": "50 point 解鎖會議中心周邊折扣"
+  }
+]

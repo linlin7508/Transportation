@@ -33,6 +33,7 @@ _BUS_DATA_FILES = {
 }
 _ARENA_LEVELS_FILE = _DATA_DIR / "arenas" / "arena_levels.json"
 _ARENA_LEVELS_BACKUP_FILE = _DATA_DIR / "arenas" / "arena_levels_backup_1750129920.json"
+_LOCAL_SHOPS_FILE = _DATA_DIR / "local_shops.json"
 _DEFAULT_ROUTE_POSITIONS = [
     ("cat-right", "貓空右線", "cat-right-route", 25.0330, 121.5654),
     ("cat-left", "貓空左線(動物園)", "cat-left-route", 25.0298, 121.5761),
@@ -462,6 +463,37 @@ def _creatures_from_csv() -> list[dict]:
 
 def _all_route_creatures() -> list[dict]:
     return _creatures_from_csv() or _creatures_from_images()
+
+
+def _load_local_shops() -> list[dict]:
+    try:
+        with _LOCAL_SHOPS_FILE.open(encoding="utf-8") as file:
+            shops = json.load(file)
+    except (FileNotFoundError, UnicodeDecodeError, json.JSONDecodeError, TypeError) as error:
+        print(f"載入在地店家資料失敗 {_LOCAL_SHOPS_FILE}: {error}")
+        return []
+
+    normalized_shops = []
+    for shop in shops if isinstance(shops, list) else []:
+        if not isinstance(shop, dict):
+            continue
+        try:
+            lat = float(shop.get("lat") if shop.get("lat") is not None else shop.get("y"))
+            lng = float(shop.get("lng") if shop.get("lng") is not None else shop.get("x"))
+        except (TypeError, ValueError):
+            continue
+
+        normalized_shops.append({
+            **shop,
+            "lat": lat,
+            "lng": lng,
+            "x": float(shop.get("x", lng)),
+            "y": float(shop.get("y", lat)),
+            "position": {"lat": lat, "lng": lng},
+            "unlock_points": int(shop.get("unlock_points") or 50),
+        })
+
+    return normalized_shops
 
 
 def _route_creature_source_by_id(source_id: str) -> dict | None:
@@ -993,6 +1025,12 @@ def route_creatures_all():
         "lifetime_seconds": _ROUTE_CREATURE_LIFETIME,
         "per_route": _ROUTE_CREATURES_PER_ROUTE,
     })
+
+
+@game_bp.get("/api/local-shops")
+def local_shops():
+    shops = _load_local_shops()
+    return jsonify({"success": True, "shops": shops, "count": len(shops)})
 
 
 @game_bp.get("/api/user/backpack")
